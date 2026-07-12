@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>速聴トレーナー — GROW Listen</title>
+<style>
+  :root{
+    --ink:#1c2433; --red:#e25141; --blue:#3a6ea8; --amber:#c08a2d; --gold:#b9932f;
+    --bg:#f4f7fb; --card:#ffffff; --line:#e2e8f0; --muted:#5b6678; --sub:#8a94a6;
+    --okbg:#eef6ef; --okink:#2f7d4f; --ngbg:#fdeeec; --ngink:#c4362a;
+    --ambbg:#fbf3e2; --ambink:#a06f1c; --accent:#3a6ea8; --accent2:#4a7fb8;
+    --shadow:0 1px 3px rgba(20,30,50,.06); --shadow2:0 6px 24px rgba(20,30,50,.14);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#f4f7fb !important;color:#1c2433 !important;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    background:#f4f7fb !important; color:#1c2433 !important; line-height:1.7;
+    -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%;
+    overscroll-behavior:none;
+  }
+  /* OSダークモードでも暗転させない */
+  @media (prefers-color-scheme: dark){
+    html,body{background:#f4f7fb !important;color:#1c2433 !important;}
+    .screen,.wizard{background:#f4f7fb !important;}
+    .card,.tile,.modal-box,.quiz-choice,.seg,.select-wrap select{background:#ffffff !important;color:#1c2433 !important;}
+    textarea,input{background:#ffffff !important;color:#1c2433 !important;}
+    .navbar{background:rgba(255,255,255,.92) !important;}
+    .note{background:#fbfaf5 !important;}
+    .chart-wrap{background:#ffffff !important;}
+  }
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  select,textarea,input{font-family:inherit;}
+
+  /* ===== Layout ===== */
+  #app{max-width:600px;margin:0 auto;min-height:100dvh;position:relative;}
+  .screen{
+    display:none; padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 88px);
+    animation:fade .28s ease;
+  }
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .eyebrow{font-size:11.5px;letter-spacing:.14em;color:var(--blue);font-weight:800;text-transform:uppercase;margin-bottom:6px;}
+  h1.title{font-size:23px;font-weight:800;letter-spacing:.01em;margin-bottom:2px;}
+  .subtitle{font-size:13px;color:var(--muted);margin-bottom:18px;}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow);}
+  .card.note{background:#fbfaf5;border-color:#ece3cf;}
+
+  /* ===== Home ===== */
+  .hero{background:linear-gradient(135deg,#3a6ea8,#4f86c6);color:#fff !important;border:none;position:relative;overflow:hidden;}
+  .hero .status{font-size:12.5px;font-weight:700;letter-spacing:.06em;opacity:.92;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+  .hero .dot{width:8px;height:8px;border-radius:50%;background:#ffd24a;box-shadow:0 0 0 3px rgba(255,210,74,.28);}
+  .hero .dot.done{background:#7fe0a0;box-shadow:0 0 0 3px rgba(127,224,160,.28);}
+  .hero .speedlabel{font-size:12px;opacity:.85;font-weight:600;}
+  .hero .speed{font-size:52px;font-weight:800;line-height:1;letter-spacing:-.02em;margin:2px 0 4px;}
+  .hero .speed span{font-size:22px;font-weight:700;opacity:.9;}
+  .hero .cpm{font-size:13px;opacity:.9;}
+  .startbtn{
+    width:100%;margin-top:16px;padding:16px;border-radius:14px;background:#fff;color:#2c5a8f !important;
+    font-size:16.5px;font-weight:800;box-shadow:0 4px 14px rgba(0,0,0,.14);transition:transform .1s;
+  }
+  .startbtn:active{transform:scale(.98);}
+  .startbtn.done{background:rgba(255,255,255,.18);color:#fff !important;box-shadow:none;border:1.5px solid rgba(255,255,255,.5);}
+
+  .stat-row{display:flex;gap:10px;margin-bottom:14px;}
+  .tile{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 10px;text-align:center;box-shadow:var(--shadow);}
+  .tile .num{font-size:24px;font-weight:800;color:var(--ink);line-height:1.1;}
+  .tile .num small{font-size:12px;font-weight:700;color:var(--muted);}
+  .tile .lab{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;}
+
+  .chart-wrap{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 14px 10px;box-shadow:var(--shadow);margin-bottom:14px;}
+  .chart-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+  .chart-head h3{font-size:14px;font-weight:800;}
+  .chart-head .leg{font-size:10.5px;color:var(--muted);display:flex;gap:12px;}
+  .chart-head .leg i{font-style:normal;display:inline-flex;align-items:center;gap:4px;}
+  .chart-head .leg .sw{width:14px;height:0;border-top:2px solid var(--blue);display:inline-block;}
+  .chart-head .leg .sw.avg{border-top:2px dashed var(--amber);}
+  .chart-empty{font-size:13px;color:var(--sub);text-align:center;padding:26px 0;}
+
+  /* ===== Bottom nav ===== */
+  .navbar{
+    position:fixed;bottom:0;left:0;right:0;max-width:600px;margin:0 auto;
+    background:rgba(255,255,255,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);display:flex;z-index:40;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .navbar button{flex:1;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--sub);font-size:10.5px;font-weight:700;}
+  .navbar button.active{color:var(--blue);}
+  .navbar button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;}
+  .navbar button.active svg{stroke-width:2.2;}
+
+  /* ===== Wizard (training) ===== */
+  .wizard{
+    position:fixed;inset:0;background:#f4f7fb;z-index:60;display:none;flex-direction:column;
+    max-width:600px;margin:0 auto;
+  }
+  .wizard.active{display:flex;}
+  .wiz-head{padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;display:flex;align-items:center;gap:12px;}
+  .wiz-close{width:34px;height:34px;border-radius:10px;background:#fff;box-shadow:var(--shadow);font-size:20px;color:var(--muted);flex-shrink:0;line-height:1;}
+  .progress{flex:1;height:6px;background:#e4eaf2;border-radius:3px;overflow:hidden;}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,#3a6ea8,#4f86c6);border-radius:3px;transition:width .35s ease;width:20%;}
+  .wiz-step-lab{font-size:11px;font-weight:800;color:var(--blue);letter-spacing:.08em;flex-shrink:0;}
+  .wiz-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 18px calc(env(safe-area-inset-bottom) + 20px);}
+  .wiz-body h2{font-size:20px;font-weight:800;margin-bottom:4px;}
+  .wiz-body .lead{font-size:13.5px;color:var(--muted);margin-bottom:18px;}
+
+  .primary{width:100%;padding:15px;border-radius:13px;background:var(--blue);color:#fff !important;font-size:16px;font-weight:800;box-shadow:0 4px 12px rgba(58,110,168,.28);transition:transform .1s,opacity .2s;}
+  .primary:active{transform:scale(.985);}
+  .primary:disabled{opacity:.45;box-shadow:none;}
+  .ghost{width:100%;padding:13px;border-radius:13px;background:#fff;border:1.5px solid var(--line);color:var(--muted) !important;font-size:14.5px;font-weight:700;margin-top:10px;}
+  .ghost:disabled{opacity:.4;}
+
+  /* Listen step */
+  .listen-stage{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px 20px;text-align:center;box-shadow:var(--shadow);margin-bottom:16px;}
+  .wave{display:flex;align-items:center;justify-content:center;gap:5px;height:64px;margin-bottom:16px;}
+  .wave i{width:5px;border-radius:3px;background:linear-gradient(180deg,#4f86c6,#3a6ea8);height:14px;}
+  .wave.playing i{animation:bar 1s ease-in-out infinite;}
+  .wave i:nth-child(2){animation-delay:.12s} .wave i:nth-child(3){animation-delay:.24s}
+  .wave i:nth-child(4){animation-delay:.1s} .wave i:nth-child(5){animation-delay:.3s}
+  .wave i:nth-child(6){animation-delay:.18s} .wave i:nth-child(7){animation-delay:.05s}
+  .wave i:nth-child(8){animation-delay:.22s} .wave i:nth-child(9){animation-delay:.14s}
+  @keyframes bar{0%,100%{height:12px}50%{height:52px}}
+  .timer{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:.02em;}
+  .listen-meta{font-size:12.5px;color:var(--muted);margin-top:6px;}
+  .cat-chip{display:inline-block;font-size:11px;font-weight:800;color:var(--blue);background:#eaf1f9;border-radius:20px;padding:4px 12px;margin-bottom:14px;letter-spacing:.03em;}
+
+  /* Quiz */
+  .quiz-q{font-size:16px;font-weight:800;margin-bottom:14px;line-height:1.5;}
+  .quiz-progress{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:8px;}
+  .quiz-choice{
+    width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:13px;
+    padding:14px 15px;margin-bottom:10px;font-size:14.5px;font-weight:600;color:var(--ink);
+    display:flex;align-items:center;gap:11px;transition:all .12s;line-height:1.4;
+  }
+  .quiz-choice .mk{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--sub);}
+  .quiz-choice:active{transform:scale(.99);}
+  .quiz-choice.correct{border-color:var(--okink);background:var(--okbg);}
+  .quiz-choice.correct .mk{border-color:var(--okink);background:var(--okink);color:#fff;}
+  .quiz-choice.wrong{border-color:var(--ngink);background:var(--ngbg);}
+  .quiz-choice.wrong .mk{border-color:var(--ngink);background:var(--ngink);color:#fff;}
+  .quiz-choice.disabled{pointer-events:none;opacity:.85;}
+  .quiz-fb{font-size:13px;font-weight:700;margin:2px 0 14px;padding:10px 13px;border-radius:11px;}
+  .quiz-fb.ok{background:var(--okbg);color:var(--okink);}
+  .quiz-fb.ng{background:var(--ngbg);color:var(--ngink);}
+
+  /* Restate */
+  .seg{display:flex;background:#e9eef5;border-radius:12px;padding:4px;margin-bottom:16px;}
+  .seg button{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;color:var(--muted);transition:all .15s;}
+  .seg button.active{background:#fff;color:var(--blue);box-shadow:var(--shadow);}
+  textarea{width:100%;min-height:150px;border:1.5px solid var(--line);border-radius:13px;padding:14px;font-size:15px;line-height:1.7;resize:vertical;color:var(--ink);background:#fff;}
+  textarea:focus{outline:none;border-color:var(--blue);}
+  .rec-btn{width:100%;padding:15px;border-radius:13px;background:#fff;border:1.5px solid var(--blue);color:var(--blue) !important;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:12px;}
+  .rec-btn.recording{background:var(--ngbg);border-color:var(--ngink);color:var(--ngink) !important;}
+  .rec-btn .rdot{width:11px;height:11px;border-radius:50%;background:currentColor;}
+  .rec-btn.recording .rdot{animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .char-count{font-size:11.5px;color:var(--sub);text-align:right;margin-top:5px;font-weight:600;}
+  .interim{font-size:13px;color:var(--sub);font-style:italic;min-height:18px;margin-bottom:8px;}
+
+  /* Self-check */
+  .selfcheck-item{display:flex;align-items:center;gap:12px;padding:13px 14px;background:#fff;border:1.5px solid var(--line);border-radius:12px;margin-bottom:9px;}
+  .selfcheck-item .kp{flex:1;font-size:14px;font-weight:600;line-height:1.5;}
+  .selfcheck-item .toggle{display:flex;gap:6px;flex-shrink:0;}
+  .selfcheck-item .toggle button{width:38px;height:34px;border-radius:9px;border:1.5px solid var(--line);font-size:15px;background:#fff;}
+  .selfcheck-item .toggle button.said{background:var(--okbg);border-color:var(--okink);}
+  .selfcheck-item .toggle button.notsaid{background:var(--ngbg);border-color:var(--ngink);}
+
+  /* Eval result */
+  .score-ring{display:flex;justify-content:center;margin:6px 0 18px;}
+  .metric-row{display:flex;gap:9px;margin-bottom:14px;}
+  .metric{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 6px;text-align:center;}
+  .metric .mv{font-size:22px;font-weight:800;line-height:1;}
+  .metric .ml{font-size:10.5px;color:var(--muted);margin-top:4px;font-weight:600;}
+  .fb-card{border-left:4px solid var(--blue);}
+  .fb-card.good{border-color:var(--okink);}
+  .fb-card h4{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em;margin-bottom:5px;text-transform:uppercase;}
+  .fb-card p{font-size:14px;line-height:1.6;color:var(--ink);}
+  .missed-chip{display:inline-block;font-size:12px;background:var(--ngbg);color:var(--ngink);border-radius:8px;padding:5px 10px;margin:3px 4px 0 0;font-weight:600;}
+
+  /* Result screen */
+  .result-big{text-align:center;padding:8px 0 4px;}
+  .result-cpm{font-size:56px;font-weight:800;color:var(--blue);line-height:1;letter-spacing:-.02em;}
+  .result-cpm small{font-size:18px;color:var(--muted);font-weight:700;}
+  .level-banner{border-radius:14px;padding:16px;text-align:center;margin:16px 0;font-weight:700;}
+  .level-banner.up{background:var(--okbg);color:var(--okink);}
+  .level-banner.down{background:var(--ambbg);color:var(--ambink);}
+  .level-banner.keep{background:#eef2f8;color:var(--muted);}
+  .level-banner .lb-big{font-size:19px;font-weight:800;margin-bottom:4px;}
+  .level-banner .lb-sub{font-size:12.5px;font-weight:600;opacity:.9;line-height:1.5;}
+
+  /* History */
+  .hist-item{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;}
+  .hist-item .hi-main{flex:1;min-width:0;}
+  .hist-item .hi-title{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hist-item .hi-meta{font-size:11.5px;color:var(--muted);margin-top:3px;}
+  .hist-item .hi-score{text-align:right;flex-shrink:0;}
+  .hist-item .hi-score .s{font-size:18px;font-weight:800;color:var(--blue);}
+  .hist-item .hi-score .l{font-size:10px;color:var(--sub);font-weight:600;}
+  .lv-badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;margin-left:6px;}
+  .lv-badge.up{background:var(--okbg);color:var(--okink);}
+  .lv-badge.down{background:var(--ambbg);color:var(--ambink);}
+
+  /* Settings */
+  .set-group{margin-bottom:8px;}
+  .set-label{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em;margin:4px 0 9px;text-transform:uppercase;}
+  .select-wrap{position:relative;margin-bottom:10px;}
+  .select-wrap select{width:100%;padding:13px 40px 13px 14px;border:1.5px solid var(--line);border-radius:12px;font-size:14.5px;font-weight:600;background:#fff;color:var(--ink);appearance:none;-webkit-appearance:none;}
+  .select-wrap::after{content:"▾";position:absolute;right:15px;top:50%;transform:translateY(-50%);color:var(--sub);pointer-events:none;font-size:13px;}
+  .set-row{display:flex;gap:10px;}
+  .set-row .primary,.set-row .ghost{margin-top:0;}
+  .link-row{width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 15px;margin-bottom:10px;font-size:14.5px;font-weight:600;color:var(--ink);display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow);}
+  .link-row .arrow{color:var(--sub);}
+  .speed-manual{display:flex;align-items:center;gap:14px;justify-content:center;padding:6px 0;}
+  .speed-manual button{width:48px;height:48px;border-radius:50%;background:#fff;border:1.5px solid var(--line);font-size:24px;font-weight:700;color:var(--blue);box-shadow:var(--shadow);}
+  .speed-manual .sv{font-size:32px;font-weight:800;min-width:110px;text-align:center;}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(20,30,50,.5);z-index:100;display:none;align-items:center;justify-content:center;padding:22px;animation:fade .2s;}
+  .modal-overlay.active{display:flex;}
+  .modal-box{background:#fff;border-radius:18px;padding:22px;width:100%;max-width:400px;box-shadow:var(--shadow2);max-height:86vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .modal-box h3{font-size:18px;font-weight:800;margin-bottom:10px;}
+  .modal-box .m-body{font-size:14px;line-height:1.7;color:var(--muted);margin-bottom:18px;}
+  .modal-box .m-body p{margin-bottom:10px;}
+  .modal-box .m-body h4{font-size:14px;color:var(--ink);font-weight:800;margin:14px 0 6px;}
+  .modal-actions{display:flex;gap:10px;}
+  .modal-actions button{flex:1;padding:13px;border-radius:12px;font-size:14.5px;font-weight:800;}
+  .modal-actions .m-ok{background:var(--blue);color:#fff !important;}
+  .modal-actions .m-cancel{background:#eef2f8;color:var(--muted) !important;}
+  .modal-actions .m-danger{background:var(--red);color:#fff !important;}
+
+  /* Spinner */
+  .spinner{width:34px;height:34px;border:3px solid #dfe6ef;border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:20px auto;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{text-align:center;font-size:13.5px;color:var(--muted);}
+
+  .footer{text-align:center;font-size:11px;color:var(--sub);padding:8px 0 4px;}
+  .voice-try{display:flex;gap:10px;margin-top:2px;}
+  .badge-src{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;background:#eaf1f9;color:var(--blue);margin-left:7px;vertical-align:middle;}
+  .badge-src.api{background:#fdf1e2;color:var(--amber);}
+  .disclaimer{font-size:11.5px;color:var(--ambink);background:var(--ambbg);border-radius:9px;padding:8px 11px;margin-bottom:12px;font-weight:600;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ===== HOME ===== -->
+  <section id="screen-home" class="screen active">
+    <div class="eyebrow">GROW Listen</div>
+    <h1 class="title">速聴トレーナー</h1>
+    <p class="subtitle">毎日5分。聴く力を、数字で伸ばす。</p>
+
+    <div class="card hero">
+      <div class="status" id="home-status"><span class="dot"></span>今日の訓練：未完了</div>
+      <div class="speedlabel">現在の速度レベル</div>
+      <div class="speed" id="home-speed">1.0<span>x</span></div>
+      <div class="cpm" id="home-cpm">理解可能CPM：—</div>
+      <button class="startbtn" data-act="start-training">今日の訓練を開始</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="tile"><div class="num" id="stat-streak">0<small>日</small></div><div class="lab">連続日数</div></div>
+      <div class="tile"><div class="num" id="stat-total">0</div><div class="lab">累計セッション</div></div>
+      <div class="tile"><div class="num" id="stat-bestcpm">—</div><div class="lab">最高CPM</div></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-head">
+        <h3>理解可能CPM（直近30日）</h3>
+        <div class="leg">
+          <i><span class="sw"></span>日次</i>
+          <i><span class="sw avg"></span>7日平均</i>
+        </div>
+      </div>
+      <div id="chart-host"><div class="chart-empty">まだデータがありません。<br>訓練を始めると推移が表示されます。</div></div>
+    </div>
+    <div class="footer" id="footer-ver"></div>
+  </section>
+
+  <!-- ===== HISTORY ===== -->
+  <section id="screen-history" class="screen">
+    <div class="eyebrow">History</div>
+    <h1 class="title">訓練の記録</h1>
+    <p class="subtitle">タップで評価コメントを再確認できます。</p>
+    <div id="history-host"></div>
+  </section>
+
+  <!-- ===== SETTINGS ===== -->
+  <section id="screen-settings" class="screen">
+    <div class="eyebrow">Settings</div>
+    <h1 class="title">設定</h1>
+    <p class="subtitle">声・コース・データを管理します。</p>
+
+    <div class="card">
+      <div class="set-label">読み上げの声</div>
+      <div class="select-wrap"><select id="voice-select" data-act="voice-change"></select></div>
+      <div class="voice-try">
+        <button class="ghost" data-act="voice-preview" style="margin-top:0">▶ 試聴する</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.6">
+        iOSでは <b>設定→アクセシビリティ→読み上げコンテンツ→声→日本語</b> から高品質な拡張音声（例：Kyoko 拡張）をダウンロードすると、より自然な声になります。
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="set-label">コースの既定</div>
+      <div class="select-wrap"><select id="course-select" data-act="course-change">
+        <option value="builtin">教養（内蔵素材）</option>
+        <option value="news">ニュース（API生成）</option>
+        <option value="auto">おまかせ</option>
+      </select></div>
+      <p style="font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.6">
+        ニュースコースはClaude APIで素材を生成します。オフライン時や失敗時は自動で内蔵素材に切り替わります。
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="set-label">速度の手動調整（上級者向け）</div>
+      <div class="speed-manual">
+        <button data-act="speed-down">−</button>
+        <div class="sv" id="manual-speed">1.0x</div>
+        <button data-act="speed-up">＋</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--muted);margin-top:8px;text-align:center;line-height:1.6">
+        手動で変更すると記録に残ります。通常は自動調整に任せることを推奨します。
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="set-label">データ</div>
+      <button class="link-row" data-act="export"><span>データをエクスポート（JSON）</span><span class="arrow">↓</span></button>
+      <button class="link-row" data-act="import"><span>データをインポート</span><span class="arrow">↑</span></button>
+      <input type="file" id="import-file" accept="application/json,.json" class="hidden">
+      <button class="link-row" data-act="why"><span>なぜ効くのか（科学的根拠）</span><span class="arrow">›</span></button>
+      <button class="link-row" data-act="reset-all" style="color:var(--red)"><span>全データを削除</span><span class="arrow">⚠</span></button>
+    </div>
+    <div class="footer" id="footer-ver2"></div>
+  </section>
+</div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<nav class="navbar" id="navbar">
+  <button data-nav="home" class="active">
+    <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>ホーム</button>
+  <button data-nav="history">
+    <svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>履歴</button>
+  <button data-nav="settings">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2.3-1.3L13.5 2h-3l-.4 2.6a7 7 0 0 0-2.3 1.3l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.3l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2.3 1.3l.4 2.6h3l.4-2.6a7 7 0 0 0 2.3-1.3l2.4 1 2-3.4-2-1.6c.06-.43.1-.86.1-1.3z"/></svg>設定</button>
+</nav>
+
+<!-- ===== WIZARD ===== -->
+<div class="wizard" id="wizard">
+  <div class="wiz-head">
+    <button class="wiz-close" data-act="wiz-close">✕</button>
+    <div class="progress"><i id="wiz-progress"></i></div>
+    <div class="wiz-step-lab" id="wiz-step-lab">1/5</div>
+  </div>
+  <div class="wiz-body" id="wiz-body"></div>
+</div>
+
+<!-- ===== MODAL ===== -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <h3 id="modal-title"></h3>
+    <div class="m-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+window.SOKUCHO_MATERIALS = [
+  {
+    id: "b_his_01", source: "builtin", category: "歴史", title: "活版印刷が変えた社会",
+    text: "十五世紀半ば、グーテンベルクが活版印刷を実用化した。それまで書物は写本として一冊ずつ手で写され、時間も費用もかかったため、知識は聖職者や貴族にほぼ独占されていた。活字を組み合わせて大量に刷る技術は、この構造を根本から崩した。書物の価格が下がり、聖書や学術書が広く流通し、識字率が上がっていった。読める人が増えれば、権威が語る解釈をうのみにせず、各自が原典にあたって考えるようになる。宗教改革や科学革命が急速に広がった背景には、この情報流通の劇的な変化があった。技術が知識の独占を壊し、社会の考え方そのものを変えた好例である。",
+    keypoints: ["活版印刷以前は写本のため知識が聖職者や貴族に独占されていた", "大量印刷により書物が安価になり広く流通し識字率が上がった", "各自が原典を読んで自分で考えるようになった", "宗教改革や科学革命の急速な広がりを情報流通の変化が支えた"],
+    quiz: [
+      { q: "活版印刷以前に知識が一部の人に限られていた主な理由は？", choices: ["言語が統一されていなかったから", "写本に手間と費用がかかったから", "教育制度が存在しなかったから", "紙が発明されていなかったから"], answer: 1 },
+      { q: "印刷技術が社会の考え方を変えた仕組みとして最も適切なのは？", choices: ["権威の解釈をうのみにせず原典で考える人が増えた", "写本職人の雇用が増えた", "書物が贅沢品として珍重された", "教会の権威が強化された"], answer: 0 },
+      { q: "この文章が伝える中心的な主張は？", choices: ["印刷は貴族の趣味だった", "技術が知識の独占を壊し社会を変えた", "宗教改革は印刷と無関係だった", "識字率は近代まで上がらなかった"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_his_02", source: "builtin", category: "歴史", title: "シルクロードと交易の役割",
+    text: "シルクロードは中国と地中海世界を結んだ交易路の総称である。名の通り絹が運ばれたが、実際に往来したのは物だけではない。商人や隊商が長い距離を移動する過程で、宗教や技術、農作物、そして病原体までもが土地から土地へと伝わった。仏教が東アジアに広まり、製紙術が西へ渡ったのも、この道が媒介したからである。交易は単なる物々交換ではなく、異なる文明が互いの知識を交換し合う回路として働いた。一方で疫病もまた同じ経路で拡散し、交流の恩恵と危険は表裏一体だった。人と物の移動が文化を運ぶという普遍的な構図を、シルクロードは鮮やかに示している。",
+    keypoints: ["シルクロードは中国と地中海世界を結ぶ交易路の総称", "絹だけでなく宗教・技術・作物・病原体も伝わった", "仏教の東漸や製紙術の西伝を媒介した", "交流の恩恵と疫病拡散という危険は表裏一体だった"],
+    quiz: [
+      { q: "シルクロードで運ばれたのは何か、最も適切なのは？", choices: ["絹などの物だけ", "物に加え宗教・技術・病原体", "貴金属のみ", "軍隊だけ"], answer: 1 },
+      { q: "製紙術や仏教の伝播が示すことは？", choices: ["交易路が文明間の知識交換の回路になった", "交易は物々交換にすぎなかった", "文化は移動しない", "宗教は交易を妨げた"], answer: 0 },
+      { q: "文章が指摘する交流の性質は？", choices: ["利益しかない", "危険しかない", "恩恵と危険が表裏一体", "無害である"], answer: 2 }
+    ]
+  },
+  {
+    id: "b_his_03", source: "builtin", category: "歴史", title: "産業革命と労働の変質",
+    text: "十八世紀後半のイギリスで蒸気機関が改良され、産業革命が始まった。それまで生産は家庭や小さな工房で手仕事として行われていたが、動力を得た機械が工場に集約されると、人々は決まった時刻に工場へ通い、時計に管理されて働くようになった。生産量は飛躍的に増え、都市に人口が集中した。だが同時に、長時間労働や児童労働、劣悪な住環境といった新しい社会問題も生まれた。豊かさをもたらした技術は、人々の時間の使い方や暮らしの形まで作り替えたのである。技術革新が経済だけでなく人間の生活リズムそのものを規定するという点に、産業革命の本質がある。",
+    keypoints: ["蒸気機関の改良が十八世紀後半のイギリスで産業革命を起こした", "手仕事から工場での機械生産へ移り時計に管理される働き方になった", "生産量増加と都市への人口集中が起きた", "長時間労働や児童労働など新たな社会問題も生じた"],
+    quiz: [
+      { q: "産業革命で働き方はどう変わったか？", choices: ["家庭の手仕事のまま", "時計に管理され工場に通う形に", "労働時間が短縮された", "農業中心に戻った"], answer: 1 },
+      { q: "文章が示す産業革命の本質は？", choices: ["技術が生活リズムそのものを規定した", "経済に影響しなかった", "都市が衰退した", "社会問題は生じなかった"], answer: 0 },
+      { q: "豊かさと同時に生まれたものは？", choices: ["余暇の増大のみ", "長時間労働などの社会問題", "人口の分散", "手工業の復活"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_his_04", source: "builtin", category: "歴史", title: "ローマの道と統治",
+    text: "古代ローマは広大な領土を長期にわたって統治した。その基盤の一つが、帝国全土に張り巡らされた道路網である。軍隊は舗装された道を通って迅速に辺境へ展開でき、反乱の芽を早期に摘むことができた。同時に道は物資や情報、そして法や貨幣といった制度を運び、遠く離れた属州を一つの秩序へと結びつけた。道路は軍事のためだけでなく、統治を可視化し、ローマの存在を人々の日常に浸透させる装置でもあった。物理的なインフラが政治的な支配を支えるという関係は現代にも通じる。すべての道はローマに通ずという言葉は、この中央集権的な統治の構造を端的に表している。",
+    keypoints: ["ローマの広域統治の基盤の一つが全土の道路網だった", "道は軍隊の迅速な展開を可能にし反乱を抑えた", "物資・情報・法・貨幣などの制度も運び属州を結びつけた", "物理的インフラが政治的支配を支えた"],
+    quiz: [
+      { q: "ローマの道路網が統治に果たした役割は？", choices: ["観光の促進", "軍の迅速な展開と制度の伝達", "農地の拡大のみ", "娯楽の提供"], answer: 1 },
+      { q: "文章の中心的な主張は？", choices: ["道は軍事専用だった", "物理インフラが政治支配を支えた", "属州は独立していた", "道路は不要だった"], answer: 1 },
+      { q: "「すべての道はローマに通ず」が象徴するのは？", choices: ["地方分権", "中央集権的な統治構造", "交易の自由", "宗教の統一"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_his_05", source: "builtin", category: "歴史", title: "貨幣の誕生",
+    text: "人類は当初、必要なものを物々交換で手に入れていた。だがこの方式には限界がある。自分が欲しい物を持ち、かつ自分が渡す物を欲しがる相手を同時に見つけねばならず、取引の成立は偶然に大きく左右された。この不便を解消したのが貨幣である。誰もが価値を認める共通の媒介物があれば、まず売って貨幣を得、後で好きな時に必要な物を買える。貨幣は価値の尺度となり、保存の手段ともなった。さらに信用取引や貯蓄、投資といった複雑な経済活動の土台にもなった。貨幣は単なる交換の道具ではなく、人々の経済的な自由と時間の柔軟さを飛躍的に広げた発明だったのである。",
+    keypoints: ["物々交換は欲求の一致が必要で取引成立が偶然に左右された", "貨幣は共通の価値媒介として取引を柔軟にした", "貨幣は価値の尺度であり保存の手段でもある", "信用取引や貯蓄・投資など複雑な経済の土台になった"],
+    quiz: [
+      { q: "物々交換の根本的な問題点は？", choices: ["物が重かった", "互いの欲求が一致する必要があった", "言語が違った", "距離が遠かった"], answer: 1 },
+      { q: "貨幣が果たす機能として文中に挙がっていないのは？", choices: ["価値の尺度", "保存の手段", "交換の媒介", "重量の計測"], answer: 3 },
+      { q: "文章が伝える貨幣の意義は？", choices: ["経済的自由と時間の柔軟さを広げた", "取引を減らした", "物々交換を復活させた", "価値を不安定にした"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_sci_01", source: "builtin", category: "科学", title: "エネルギー保存の法則",
+    text: "物理学の基本原理の一つに、エネルギー保存の法則がある。エネルギーは形を変えることはあっても、新たに生まれたり消えたりはしない、という主張だ。高い所にある物体は位置エネルギーを持ち、落下するとそれが運動エネルギーに変わる。地面に当たれば熱や音のエネルギーへと姿を変える。総量は一貫して保たれている。この原理は永久機関、すなわち外部からエネルギーを供給せず動き続ける装置が原理的に不可能であることを示す。どんなに巧妙な仕掛けでも、摩擦などで失われる分を無から補うことはできないからだ。エネルギー保存則は、自然界のあらゆる現象を貫く強力な制約として働いている。",
+    keypoints: ["エネルギーは形を変えるが総量は生成も消滅もしない", "位置エネルギーが運動エネルギーや熱・音へと変換される", "この法則は永久機関が原理的に不可能であることを示す", "自然界のあらゆる現象を貫く制約として働く"],
+    quiz: [
+      { q: "エネルギー保存の法則が主張することは？", choices: ["エネルギーは増え続ける", "形は変わるが総量は保たれる", "エネルギーは消える", "熱だけが保存される"], answer: 1 },
+      { q: "この法則から導かれる帰結は？", choices: ["永久機関は原理的に不可能", "永久機関は容易に作れる", "摩擦は無視できる", "落下は起きない"], answer: 0 },
+      { q: "落下する物体のエネルギー変化として正しいのは？", choices: ["運動→位置のみ", "位置→運動→熱や音", "熱→位置", "変化しない"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_sci_02", source: "builtin", category: "科学", title: "自然選択のしくみ",
+    text: "ダーウィンが示した自然選択は、生物が環境に適応して変化する仕組みを説明する。ある集団の中には、遺伝によって少しずつ異なる個体が存在する。その中で、たまたま環境に有利な特徴を持つ個体は生き延びて子孫を多く残しやすい。有利な特徴は次の世代に受け継がれ、世代を重ねるうちに集団全体に広がっていく。ここに意図や目標はない。ただ、変異と、生存や繁殖のしやすさの差と、遺伝という三つの条件がそろえば、集団は自動的に環境へ適応していく。設計者がいなくても複雑で精巧な生物が生じうるという点が、この理論の革新的なところであり、生命の多様性を統一的に説明する枠組みとなった。",
+    keypoints: ["集団には遺伝による個体差（変異）が存在する", "環境に有利な特徴を持つ個体が生き延び子孫を多く残す", "有利な特徴が世代を経て集団に広がる", "変異・繁殖差・遺伝がそろえば意図なしに適応が進む"],
+    quiz: [
+      { q: "自然選択が働くために必要な条件に含まれないのは？", choices: ["個体差（変異）", "生存や繁殖のしやすさの差", "特徴の遺伝", "設計者の意図"], answer: 3 },
+      { q: "自然選択で有利な特徴はどうなるか？", choices: ["消えていく", "世代を経て集団に広がる", "変化しない", "個体だけにとどまる"], answer: 1 },
+      { q: "この理論の革新的な点は？", choices: ["設計者なしに精巧な生物が生じうる", "目標に向かって進化する", "変異は不要である", "環境は無関係である"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_sci_03", source: "builtin", category: "科学", title: "ワクチンと免疫の記憶",
+    text: "私たちの体は、一度感染した病原体を記憶する免疫の仕組みを持つ。初めて出会う病原体には対応に時間がかかり、その間に症状が進むことがある。しかし免疫は戦いの過程で相手の特徴を覚え、次に同じ病原体が侵入したときには素早く強く反応できる。ワクチンはこの記憶の仕組みを、実際に病気にかからずに獲得させる技術だ。弱めた病原体やその一部を体に示すことで、免疫にあらかじめ訓練を積ませる。すると本物が来ても即座に撃退できる。ワクチンの巧妙さは、病気の予行演習を安全に行わせる点にある。個人を守るだけでなく、多くの人が接種すれば集団の中で感染の連鎖そのものを断ち切ることもできる。",
+    keypoints: ["免疫は一度出会った病原体の特徴を記憶する", "初回は対応に時間がかかるが二度目は素早く強く反応する", "ワクチンは病気にかからず免疫に予行演習をさせる技術", "多くの人の接種は集団での感染連鎖を断ち切る"],
+    quiz: [
+      { q: "免疫の記憶がもたらす効果は？", choices: ["二度目の感染に素早く強く反応できる", "病原体を増やす", "毎回同じ時間がかかる", "記憶は残らない"], answer: 0 },
+      { q: "ワクチンの仕組みの説明として正しいのは？", choices: ["実際に重い病気にかからせる", "病気にかからず免疫に予行演習をさせる", "免疫を弱める", "病原体を強化する"], answer: 1 },
+      { q: "多くの人が接種する意義は？", choices: ["個人にしか効果がない", "集団での感染連鎖を断てる", "免疫を消す", "効果は変わらない"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_sci_04", source: "builtin", category: "科学", title: "プレートテクトニクス",
+    text: "地球の表面は、いくつもの巨大な岩盤、すなわちプレートに分かれている。プレートはその下のやわらかい層の上をゆっくりと移動しており、一年に数センチという爪の伸びる程度の速さで動いている。プレート同士がぶつかる境界では山脈が押し上げられ、離れる境界では新しい地殻が生まれる。すれ違う境界にはひずみがたまり、それが限界を超えて一気に解放されると地震となる。火山活動もまた、プレートの動きと深く結びついている。地表の地形や災害という、一見ばらばらに見える現象が、プレートの運動という一つの原理で統一的に理解できる。これがプレートテクトニクスの強力さである。",
+    keypoints: ["地球表面は複数のプレートに分かれ年数センチで移動する", "衝突境界で山脈が、離れる境界で新しい地殻が生じる", "すれ違う境界のひずみが解放されると地震になる", "地形や地震・火山を一つの原理で統一的に説明できる"],
+    quiz: [
+      { q: "プレートが動く速さの目安は？", choices: ["秒速数メートル", "一年に数センチ程度", "一日に数キロ", "動かない"], answer: 1 },
+      { q: "地震が起きる仕組みとして正しいのは？", choices: ["プレート境界のひずみが一気に解放される", "地球が膨張する", "雨が降る", "潮の満ち引き"], answer: 0 },
+      { q: "プレートテクトニクスの強力さとは？", choices: ["地形と災害を一つの原理で説明する", "地震を無くす", "火山と無関係", "地形を変えない"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_sci_05", source: "builtin", category: "科学", title: "対照実験の考え方",
+    text: "科学が信頼できる結論を導くために欠かせないのが対照実験である。ある薬が効くかを確かめたいとき、薬を飲んだ人が回復したという事実だけでは足りない。放っておいても治ったかもしれないし、薬を飲んだという安心感だけで良くなったのかもしれない。そこで、調べたい要因だけを変え、それ以外の条件をそろえた二つの群を比較する。薬を与える群と、見た目が同じ偽薬を与える群を用意し、両者の差を見るのだ。こうすれば、回復の原因が本当に薬にあるのかを切り分けられる。対照を置いて比較するという発想は、思い込みや偶然を排し、原因と結果を確かに結びつけるための科学の基本作法である。",
+    keypoints: ["結果の観察だけでは原因を特定できない", "調べたい要因だけを変え他の条件をそろえて比較する", "偽薬群との比較で回復の原因を薬に切り分けられる", "対照実験は思い込みや偶然を排す科学の基本作法"],
+    quiz: [
+      { q: "薬を飲んで回復した事実だけでは不十分な理由は？", choices: ["放置や安心感でも治りうるから", "薬が高価だから", "回復が早すぎるから", "記録がないから"], answer: 0 },
+      { q: "対照実験の要点は？", choices: ["すべての条件を変える", "調べたい要因だけを変え他をそろえる", "群を分けない", "偽薬を使わない"], answer: 1 },
+      { q: "対照実験が排そうとするものは？", choices: ["思い込みや偶然", "薬の効果", "被験者", "比較そのもの"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_eco_01", source: "builtin", category: "経済", title: "複利の力",
+    text: "複利とは、元本だけでなく、それまでに生じた利息にもさらに利息がつく仕組みである。単利であれば利息は元本にのみつくため、増え方は一定の直線を描く。ところが複利では、増えた分がまた次の利息を生むため、時間がたつほど加速度的に膨らんでいく。たとえば年利が同じでも、運用期間が長ければ長いほど、単利との差は開いていく。この効果は序盤は目立たないが、後半で急激に効いてくるため、早く始めることの価値がきわめて大きい。複利は資産運用だけでなく、知識や習慣の積み重ねにも通じる考え方だ。小さな増加が次の増加を生む構造は、長い時間と結びついたときに驚くべき結果をもたらす。",
+    keypoints: ["複利は元本だけでなく利息にも利息がつく仕組み", "単利は直線的だが複利は加速度的に増える", "運用期間が長いほど単利との差が開く", "効果は後半で急に効くため早く始める価値が大きい"],
+    quiz: [
+      { q: "複利と単利の違いは？", choices: ["複利は利息にも利息がつく", "単利のほうが速く増える", "両者は同じ", "複利は元本が減る"], answer: 0 },
+      { q: "複利の効果が特に大きくなる条件は？", choices: ["運用期間が長い", "期間が短い", "利率がゼロ", "途中で引き出す"], answer: 0 },
+      { q: "文章が示す教訓は？", choices: ["遅く始めるほど有利", "早く始めることの価値が大きい", "複利は資産にしか使えない", "序盤に効果が集中する"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_eco_02", source: "builtin", category: "経済", title: "比較優位と分業",
+    text: "二つの国や人が、それぞれ得意な仕事に集中し、生産物を交換すると、全体の産出量が増える。これが比較優位の考え方である。重要なのは、あらゆる面で相手より優れている側でも、分業から利益を得られる点だ。何もかも自分でやると、得意でない作業にも時間を奪われる。そこで、自分が相対的に最も得意なことに専念し、苦手なことは相手に任せて交換すれば、双方が使える資源をより価値の高い方向へ振り向けられる。絶対的な優劣ではなく、機会費用という相対的な尺度が分業の利益を決める。この原理は国際貿易だけでなく、個人の役割分担やチームの仕事の割り振りにも広く応用できる。",
+    keypoints: ["各自が得意な仕事に集中し交換すると全体の産出が増える", "全面的に優れた側でも分業から利益を得られる", "絶対優位ではなく機会費用という相対尺度が利益を決める", "国際貿易だけでなく個人やチームの分担にも応用できる"],
+    quiz: [
+      { q: "比較優位の考え方で重要な点は？", choices: ["全面的に優れた側も分業で得をする", "強い者は交換しない方がよい", "分業は損をする", "絶対優位だけが重要"], answer: 0 },
+      { q: "分業の利益を決める尺度は？", choices: ["絶対的な優劣", "機会費用という相対尺度", "国の面積", "人口"], answer: 1 },
+      { q: "この原理の応用範囲は？", choices: ["国際貿易のみ", "貿易・個人・チームの分担", "農業のみ", "応用できない"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_eco_03", source: "builtin", category: "経済", title: "インフレとお金の価値",
+    text: "インフレとは、物やサービスの価格が全体として持続的に上がる現象である。同じ千円でも、去年は買えた量が今年は買えないなら、お金の価値は目減りしている。適度なインフレは経済活動を促す面がある。値上がりが予想されれば人々は早めに消費や投資をし、企業も生産を増やそうとするからだ。しかし急激なインフレは生活を圧迫し、貯蓄の価値を急速に奪う。逆に物価が下がり続けるデフレも、消費や投資の先送りを招き、経済を停滞させる。だから多くの中央銀行は、緩やかで安定したインフレを目標に金融政策を運営する。物価の安定とは、変化がないことではなく、予測可能な緩やかさを保つことを意味する。",
+    keypoints: ["インフレは物価が持続的に上がりお金の価値が目減りする現象", "適度なインフレは消費や投資を促す面がある", "急激なインフレは生活を圧迫しデフレは経済を停滞させる", "中央銀行は緩やかで安定したインフレを目標にする"],
+    quiz: [
+      { q: "インフレが進むとお金の価値はどうなる？", choices: ["上がる", "目減りする", "変わらない", "二倍になる"], answer: 1 },
+      { q: "適度なインフレの効果は？", choices: ["消費や投資を促す", "経済を止める", "貯蓄を増やす", "物価を下げる"], answer: 0 },
+      { q: "中央銀行が目指す物価の安定とは？", choices: ["変化が全くないこと", "予測可能な緩やかさを保つこと", "急激な上昇", "継続的な下落"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_eco_04", source: "builtin", category: "経済", title: "外部性という見落とし",
+    text: "市場での取引は、売り手と買い手の双方が納得すれば成立する。しかしその取引が、当事者以外の第三者に影響を及ぼすことがある。これを外部性という。工場が安く製品を作れても、排出される煙が近隣住民の健康を害するなら、その費用は価格に含まれず、社会全体では見えないコストが発生している。逆に、ある人が庭を美しく手入れすれば、通行人もその眺めを無償で楽しめる。市場価格は当事者の損得しか映さないため、こうした波及効果を取りこぼす。だから政府は課税や補助、規制を通じて、外部性を価格に織り込ませようとする。市場は万能ではなく、その死角を意識して初めて適切に活用できるのである。",
+    keypoints: ["外部性とは取引が第三者に及ぼす影響のこと", "公害のように価格に含まれない社会的費用が生じうる", "良い波及効果もあるが市場価格は当事者の損得しか映さない", "政府は課税・補助・規制で外部性を価格に織り込ませる"],
+    quiz: [
+      { q: "外部性とは何か？", choices: ["取引が第三者に及ぼす影響", "売り手の利益", "買い手の満足", "価格の変動"], answer: 0 },
+      { q: "公害が示す問題は？", choices: ["社会的費用が価格に含まれない", "製品が高くなる", "取引が成立しない", "第三者が得をする"], answer: 0 },
+      { q: "政府が外部性に対して行うことは？", choices: ["何もしない", "課税・補助・規制で価格に織り込む", "市場を廃止する", "取引を禁じる"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_eco_05", source: "builtin", category: "経済", title: "分散投資とリスク",
+    text: "投資には必ず不確実性が伴う。将来どの資産が値上がりするかを確実に当てることは誰にもできない。そこで有効なのが分散である。値動きの傾向が異なる複数の資産に資金を分けて持てば、一つが下がっても別のものが持ちこたえ、全体としての振れ幅が小さくなる。卵を一つの籠に盛るなという格言は、この考えを言い表している。分散は期待できる利益そのものを増やすわけではないが、同じ利益を狙う際に負う危険を減らせる点に価値がある。重要なのは、互いに異なる動きをする資産を組み合わせることだ。似た動きのものばかり集めても、下落は同時に襲ってくる。分散とは、予測できない未来に対する謙虚な備えなのである。",
+    keypoints: ["将来どの資産が上がるかは確実には予測できない", "値動きの異なる複数資産に分けると全体の振れ幅が減る", "分散は利益を増やさないが同じ利益で負う危険を減らせる", "似た動きの資産ばかりでは下落が同時に来て意味が薄い"],
+    quiz: [
+      { q: "分散投資の目的は？", choices: ["利益を確実に増やす", "全体の振れ幅（危険）を減らす", "予測を的中させる", "手数料を増やす"], answer: 1 },
+      { q: "分散で重要なことは？", choices: ["似た動きの資産を集める", "互いに異なる動きの資産を組み合わせる", "一つに集中する", "現金だけ持つ"], answer: 1 },
+      { q: "「卵を一つの籠に盛るな」が表すのは？", choices: ["集中投資の推奨", "分散の考え方", "貯蓄の否定", "投資の禁止"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_phi_01", source: "builtin", category: "哲学", title: "無知の知",
+    text: "古代ギリシアの哲学者ソクラテスは、自分は何も知らないということを知っている、と語ったとされる。当時、知者と評判の人々を訪ね歩いた彼は、彼らが実は自分の無知に気づいていないことを見抜いた。多くの人は、知らないことをあたかも知っているかのように思い込み、そこで探究を止めてしまう。これに対しソクラテスは、自分の無知を自覚しているからこそ、問い続けることができた。無知の知とは、卑下ではなく、学びの出発点である。知っていると思い込むことは、新しい知識を受け入れる余地を閉ざす。自分の理解の限界を正直に見つめる姿勢こそが、より深い探究へと人を導く。謙虚さは知性の敵ではなく、その原動力なのである。",
+    keypoints: ["ソクラテスは自分の無知を知っていると語った", "知者とされる人々は無知に気づかず探究を止めていた", "知っていると思い込むと新しい知識を受け入れられない", "無知の自覚は卑下ではなく探究の出発点である"],
+    quiz: [
+      { q: "ソクラテスが知者たちに見抜いたことは？", choices: ["彼らが本当に賢いこと", "自分の無知に気づいていないこと", "彼らが謙虚なこと", "知識が正確なこと"], answer: 1 },
+      { q: "「知っていると思い込む」ことの問題は？", choices: ["新しい知識を受け入れる余地を閉ざす", "探究を深める", "謙虚になる", "無害である"], answer: 0 },
+      { q: "無知の知の意味として正しいのは？", choices: ["自己卑下", "学びの出発点", "探究の終わり", "知識の否定"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_phi_02", source: "builtin", category: "哲学", title: "帰納法の限界",
+    text: "私たちは経験を積み重ねて一般法則を導く。太陽が毎朝昇るのを何度も見れば、明日も昇ると信じる。これが帰納である。帰納は日常でも科学でも欠かせないが、原理的な弱点を抱えている。過去に何度成り立ったからといって、未来も必ずそうなる保証はどこにもない。哲学者ヒュームはこの点を鋭く指摘した。白い白鳥を千羽見ても、黒い白鳥が一羽もいないとは証明できない。実際に黒い白鳥は見つかった。帰納で得た結論は、常に反証の可能性にさらされている。だからこそ科学は法則を絶対の真理とはみなさず、反証されうる仮説として扱う。確実さの欠如を認めることが、かえって知の誠実さと更新可能性を支えている。",
+    keypoints: ["帰納は経験の積み重ねから一般法則を導く方法", "過去に成り立っても未来を必ず保証はできない（ヒュームの指摘）", "多くの観察も反証一つで覆りうる（黒い白鳥）", "科学は法則を反証されうる仮説として扱う"],
+    quiz: [
+      { q: "帰納法の原理的な弱点は？", choices: ["過去の成立が未来を保証しない", "観察できない", "計算が複雑", "経験が不要"], answer: 0 },
+      { q: "黒い白鳥の例が示すことは？", choices: ["多くの観察も反証一つで覆る", "白鳥は白い", "観察は無意味", "帰納は完全"], answer: 0 },
+      { q: "科学が法則を仮説として扱う理由は？", choices: ["面倒だから", "反証の可能性に開かれ知を更新するため", "実験が嫌いだから", "真理を否定するため"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_phi_03", source: "builtin", category: "哲学", title: "手段と目的",
+    text: "私たちは日々さまざまな行為を選ぶが、その多くは何かのための手段である。お金を稼ぐのは生活のため、勉強するのは仕事のため、というように。だが手段をたどっていくと、それ自体が目的であるような何かに行き着く。哲学者アリストテレスは、あらゆる行為が最終的に目指すものを幸福だと考えた。幸福は他の何かの手段ではなく、それ自身のために求められる究極の目的だという。問題は、手段が自己目的化することだ。お金を稼ぐこと自体が目的にすり替わり、何のためだったかを見失う。時おり立ち止まり、この行為は何のためかと問い直すことは、手段の連鎖に埋もれず、本当に大切なものを見据えるために欠かせない。",
+    keypoints: ["行為の多くは何かのための手段である", "手段をたどると自体が目的であるものに行き着く", "アリストテレスは究極の目的を幸福と考えた", "手段の自己目的化を避けるため何のためかと問い直す必要がある"],
+    quiz: [
+      { q: "アリストテレスが究極の目的と考えたものは？", choices: ["お金", "幸福", "名声", "権力"], answer: 1 },
+      { q: "文章が警告する問題は？", choices: ["手段が自己目的化し本来の目的を見失う", "目的が多すぎる", "手段が足りない", "幸福は不要"], answer: 0 },
+      { q: "問い直すことの意義は？", choices: ["本当に大切なものを見据える", "行為を増やす", "手段を捨てる", "目的をなくす"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_phi_04", source: "builtin", category: "哲学", title: "自由と責任",
+    text: "自由とは、他から強制されずに自分で選べることを指す。だが自由には必ず責任がついてくる。自分の意志で選んだ以上、その結果を引き受けるのは自分だからだ。実存主義の哲学者サルトルは、人間は自由の刑に処せられている、と表現した。私たちは選ばないという選択すらできず、絶えず何かを選び続けるほかない。この重さから逃れようと、人はしばしば決まりや他人のせいにして、自分は選んでいないと思い込もうとする。しかしそれ自体もまた一つの選択である。自由を引き受けるとは、言い訳の余地なく自分の生を自分のものとして生きることだ。責任の重さは自由の裏面であり、両者は切り離せない。",
+    keypoints: ["自由とは強制されずに自分で選べること", "選んだ結果を引き受ける責任が自由には伴う", "サルトルは人間を自由の刑に処せられていると表現した", "他人や規則のせいにするのもまた一つの選択である"],
+    quiz: [
+      { q: "サルトルの「自由の刑」が意味することは？", choices: ["選ばざるをえず選び続けるほかない", "自由は罰である", "選択は不可能", "自由は存在しない"], answer: 0 },
+      { q: "自由に必ず伴うものは？", choices: ["幸福", "責任", "富", "名声"], answer: 1 },
+      { q: "他人のせいにすることについて文章は何と言うか？", choices: ["それも一つの選択である", "責任を消せる", "自由を増やす", "正しい態度だ"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_phi_05", source: "builtin", category: "哲学", title: "ものの見方と枠組み",
+    text: "同じ出来事でも、見る枠組みが違えば意味は大きく変わる。コップに水が半分あるとき、半分しかないと見るか、半分もあると見るかで、感じ方は正反対になる。事実そのものは一つでも、それをどう切り取るかは私たちの枠組みに左右される。この枠組みは、育った文化や言葉、過去の経験によって形づくられる。厄介なのは、枠組みは普段は意識されず、まるで事実そのものを見ているかのように錯覚してしまう点だ。異なる立場の人と対話することの価値は、自分の枠組みが唯一のものではないと気づかせてくれるところにある。ものの見方を複数持つことは、世界をより豊かに、そして正確に捉えるための知的な技術なのである。",
+    keypoints: ["同じ事実でも見る枠組みで意味が変わる", "枠組みは文化・言葉・経験によって形づくられる", "枠組みは無意識で事実そのものと錯覚しやすい", "異なる立場との対話が枠組みの相対性に気づかせる"],
+    quiz: [
+      { q: "コップの水の例が示すことは？", choices: ["同じ事実も枠組みで意味が変わる", "水は半分しかない", "事実は複数ある", "見方は無関係"], answer: 0 },
+      { q: "枠組みの厄介な点は？", choices: ["普段は意識されず事実と錯覚する", "常に意識できる", "変えられない", "存在しない"], answer: 0 },
+      { q: "異なる立場との対話の価値は？", choices: ["自分の枠組みが唯一でないと気づける", "枠組みを固定する", "対立を深める", "事実を消す"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_tec_01", source: "builtin", category: "技術", title: "抽象化という道具",
+    text: "コンピュータの世界では、抽象化という考え方が至るところで使われている。抽象化とは、複雑な内部の仕組みを覆い隠し、使う側には簡単な入り口だけを見せることだ。車の運転手がエンジンの燃焼を知らなくてもアクセルを踏めば走るように、プログラマもハードウェアの細部を意識せずに命令を書ける。各層がその下の層の複雑さを隠すことで、人は一度に扱う情報を減らし、より大きな問題に集中できる。抽象化のおかげで、無数の部品が積み重なった巨大なシステムでも、人間が理解し組み立てられる。複雑さそのものを消すわけではないが、それを層に分けて隠すことで、人間の限られた認知能力でも扱えるようにする。それが抽象化の力である。",
+    keypoints: ["抽象化は複雑な内部を隠し簡単な入り口だけを見せること", "各層が下の複雑さを隠し扱う情報量を減らす", "運転手やプログラマが細部を知らずに操作できる例がある", "複雑さを消さず層に分けて隠し人の認知能力で扱えるようにする"],
+    quiz: [
+      { q: "抽象化とは何か？", choices: ["複雑な内部を隠し簡単な入口を見せること", "複雑さを消すこと", "情報を増やすこと", "部品を減らすこと"], answer: 0 },
+      { q: "抽象化がもたらす利点は？", choices: ["一度に扱う情報を減らせる", "システムを小さくする", "細部を全て見せる", "認知の負担を増やす"], answer: 0 },
+      { q: "抽象化と複雑さの関係として正しいのは？", choices: ["複雑さそのものを消す", "複雑さを層に分けて隠す", "複雑さを増やす", "複雑さと無関係"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_tec_02", source: "builtin", category: "技術", title: "アルゴリズムと効率",
+    text: "同じ問題を解くにも、手順のとり方によってかかる時間は大きく変わる。この手順のことをアルゴリズムと呼ぶ。たとえば大量のデータから目的の一つを探すとき、端から順に調べる方法もあるが、あらかじめ整列されていれば、真ん中と比べて範囲を半分ずつ絞る方法が使える。後者はデータが増えても手順の増え方がずっと緩やかだ。データが百万件になれば、この差は現実的な速さと事実上動かないほどの遅さとを分ける。良いアルゴリズムの価値は、計算機を速くすること以上に大きい。問題の規模が大きくなるほど、手順の賢さが結果を決める。効率とは単なる速さの話ではなく、大きな問題に立ち向かえるかどうかを左右する本質的な要素なのである。",
+    keypoints: ["同じ問題でもアルゴリズム次第でかかる時間が大きく変わる", "整列済みなら範囲を半分ずつ絞る探索が使える", "データが増えるほど手順の増え方の差が決定的になる", "効率は速さ以上に大きな問題に立ち向かえるかを左右する"],
+    quiz: [
+      { q: "アルゴリズムとは何を指すか？", choices: ["問題を解く手順", "計算機の部品", "データの種類", "プログラム言語"], answer: 0 },
+      { q: "範囲を半分ずつ絞る探索の利点は？", choices: ["データが増えても手順の増え方が緩やか", "常に一定時間", "整列が不要", "小さいデータ専用"], answer: 0 },
+      { q: "文章が示す効率の意味は？", choices: ["単なる速さ", "大きな問題に立ち向かえるかを左右する要素", "計算機の値段", "手順の長さ"], answer: 1 }
+    ]
+  },
+  {
+    id: "b_tec_03", source: "builtin", category: "技術", title: "インターネットの分散設計",
+    text: "インターネットは、中央に司令塔を置かない分散型の設計で作られている。データは小さな包みに分けられ、それぞれが宛先の情報を持って、その時々で空いている経路を選びながら運ばれる。途中のどこかが壊れても、別の道を通って届けばよい。この仕組みは、一部が停止しても全体は機能し続けるという強い頑健さを生む。中央のコンピュータに全てを頼る設計なら、そこが倒れれば全てが止まるが、分散型ではそうならない。多数の対等な参加者が共通の約束事に従って通信することで、巨大で信頼性の高いネットワークが成り立っている。特定の管理者に依存しない構造こそが、インターネットが世界規模に広がり、壊れにくくあり続けられた理由である。",
+    keypoints: ["インターネットは中央に司令塔を置かない分散型設計", "データは小包に分かれ空いている経路を選んで運ばれる", "一部が壊れても別経路で届き全体は機能し続ける", "特定の管理者に依存しない構造が頑健さと拡大を支えた"],
+    quiz: [
+      { q: "インターネットのデータの運ばれ方は？", choices: ["小包に分かれ経路を選んで届く", "一本の固定回線のみ", "中央を必ず通る", "運ばれない"], answer: 0 },
+      { q: "分散設計がもたらす利点は？", choices: ["一部が壊れても全体が機能し続ける", "中央が倒れると全て止まる", "経路が一つに固定される", "管理者が必要"], answer: 0 },
+      { q: "インターネットが壊れにくい理由は？", choices: ["特定の管理者に依存しない構造", "一台の巨大な計算機", "経路が固定", "参加者が少ない"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_tec_04", source: "builtin", category: "技術", title: "機械学習とデータ",
+    text: "従来のプログラムは、人があらかじめ規則を細かく書き下すことで動いた。しかし猫の写真を見分けるような課題では、規則を言葉で書き尽くすのは難しい。機械学習は発想を変える。大量の例を与え、そこに潜むパターンを機械自身に見つけさせるのだ。正解つきのデータを繰り返し示すと、内部の調整が進み、未知の入力にも当てはめられるようになる。だからこそ学習の質はデータの質と量に大きく左右される。偏ったデータで学べば偏った判断をし、量が足りなければ的外れになる。機械学習は魔法ではなく、与えられた例から統計的な規則性を抽出する仕組みである。何を学ばせるかを決めるのは人であり、その責任は人の側に残り続ける。",
+    keypoints: ["従来は人が規則を書いたが機械学習は例からパターンを学ばせる", "正解つきデータの反復で未知の入力にも対応できるようになる", "学習の質はデータの質と量に大きく左右される", "何を学ばせるかを決める責任は人の側に残る"],
+    quiz: [
+      { q: "機械学習が従来のプログラムと違う点は？", choices: ["例からパターンを機械が見つける", "人が全規則を書く", "データを使わない", "統計を使わない"], answer: 0 },
+      { q: "偏ったデータで学ぶとどうなるか？", choices: ["偏った判断をする", "必ず正確になる", "学習しない", "データが増える"], answer: 0 },
+      { q: "文章が強調する人の役割は？", choices: ["何を学ばせるかを決める責任が残る", "責任はない", "機械に任せきり", "規則を全て書く"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_tec_05", source: "builtin", category: "技術", title: "暗号化と鍵",
+    text: "インターネットで安全に情報をやり取りするために、暗号化が使われている。暗号化とは、内容を鍵なしでは読めない形に変換することだ。とりわけ巧妙なのが公開鍵という仕組みである。誰でも使える公開鍵と、本人だけが持つ秘密鍵の対を用意し、公開鍵で施錠されたものは対応する秘密鍵でしか開けないようにする。すると、相手の公開鍵で暗号化して送れば、途中で誰かが盗み見ても内容はわからず、正しい受け手だけが秘密鍵で復号できる。事前に秘密の合言葉を共有せずとも、安全な通信が成り立つのだ。この技術は買い物や送金、通信の秘匿を支える土台となっている。数学的な性質を利用して、信頼できない回線の上に信頼を築いているのである。",
+    keypoints: ["暗号化は内容を鍵なしでは読めない形に変換すること", "公開鍵と秘密鍵の対を使い公開鍵で施錠したものは秘密鍵でしか開かない", "相手の公開鍵で送れば正しい受け手だけが復号でき盗み見に強い", "事前の合言葉共有なしに安全な通信が成り立つ"],
+    quiz: [
+      { q: "公開鍵暗号の仕組みは？", choices: ["公開鍵で施錠し対応する秘密鍵で開く", "一つの鍵を共有する", "鍵を使わない", "誰でも復号できる"], answer: 0 },
+      { q: "公開鍵方式の利点は？", choices: ["事前に合言葉を共有せず安全に通信できる", "鍵が不要", "誰でも中身を読める", "回線が高速になる"], answer: 0 },
+      { q: "暗号化が支えているものは？", choices: ["買い物・送金・通信の秘匿", "計算速度", "画面の明るさ", "電力供給"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_psy_01", source: "builtin", category: "心理", title: "確証バイアス",
+    text: "人は自分の考えを裏づける情報ばかりを集め、反する情報を軽視しがちである。この傾向を確証バイアスという。ある意見を持つと、それを支持する証拠は目に留まりやすく強く記憶される一方、都合の悪い証拠は見過ごされたり、理由をつけて退けられたりする。結果として、間違った信念でも自分の中ではますます確かなものに感じられてしまう。厄介なのは、これが無意識に働くため、自分では公平に判断しているつもりでいる点だ。この偏りを和らげるには、意識してあえて反対の証拠を探し、自分が間違っている可能性を検討する習慣が要る。自分の考えを疑う努力は心地よくないが、思い込みの罠から抜け出し、より正確な理解に近づくために欠かせない。",
+    keypoints: ["確証バイアスは自説を裏づける情報ばかり集める傾向", "都合の悪い証拠は見過ごされ間違った信念も確かに感じられる", "無意識に働くため公平に判断しているつもりになる", "あえて反対の証拠を探す習慣が偏りを和らげる"],
+    quiz: [
+      { q: "確証バイアスとは？", choices: ["自説を裏づける情報ばかり集める傾向", "反対意見を好む傾向", "情報を無視する傾向", "記憶を消す傾向"], answer: 0 },
+      { q: "確証バイアスの厄介な点は？", choices: ["無意識に働き公平だと思い込む", "意識できる", "簡単に直る", "害がない"], answer: 0 },
+      { q: "偏りを和らげる方法は？", choices: ["あえて反対の証拠を探す", "同意見だけ集める", "考えを疑わない", "情報を減らす"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_psy_02", source: "builtin", category: "心理", title: "アンカリング効果",
+    text: "最初に示された数字が、その後の判断の基準点となって働くことがある。これをアンカリングという。たとえば商品の元値が高く示されていると、割引後の価格が実際以上に安く感じられる。交渉で最初に提示された金額が、その後のやり取り全体の落としどころを引き寄せることも多い。驚くべきことに、判断とは無関係なはずの数字でさえ、いったん頭に置かれると影響を及ぼすことが実験で示されている。私たちは白紙から合理的に評価しているつもりでも、実際には最初の情報という錨に引きずられている。この効果を知っておくと、提示された基準を鵜呑みにせず、本来の価値は何かを独立に問い直す余地が生まれる。数字は中立に見えて、しばしば判断を静かに誘導する。",
+    keypoints: ["アンカリングは最初に示された数字が判断の基準点になる現象", "元値の提示で割引後が実際以上に安く感じる", "無関係な数字でも頭に置かれると判断に影響する", "効果を知れば提示された基準を疑い本来の価値を問い直せる"],
+    quiz: [
+      { q: "アンカリング効果とは？", choices: ["最初の数字が判断の基準点になる", "最後の数字が重要になる", "数字を無視する", "平均を取る傾向"], answer: 0 },
+      { q: "実験が示した驚くべき点は？", choices: ["無関係な数字でも判断に影響する", "数字は影響しない", "最初の数字は無視される", "人は常に合理的"], answer: 0 },
+      { q: "効果を知る利点は？", choices: ["提示された基準を疑い本来の価値を問える", "数字を増やせる", "交渉を避けられる", "価格が下がる"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_psy_03", source: "builtin", category: "心理", title: "成長型マインドセット",
+    text: "能力は生まれつき決まっていると考えるか、努力や工夫で伸ばせると考えるか。この信念の違いが、行動や成果に大きな差を生むことが研究で示されている。能力は固定的だと信じる人は、失敗を自分の限界の証拠と受け取り、難しい課題を避けがちになる。一方、能力は伸ばせると信じる成長型の人は、失敗を学びの手がかりととらえ、困難に挑み続ける。同じつまずきでも、それを終点と見るか通過点と見るかで、その後の努力の量がまるで変わってくる。重要なのは、この見方自体が変えられるという点だ。うまくいかない経験を、才能の欠如ではなく、まだ身につけていない過程として言い換える習慣が、粘り強さと上達を支える。",
+    keypoints: ["能力は固定か伸ばせるかという信念が行動と成果に差を生む", "固定的と信じる人は失敗を限界と見て困難を避ける", "成長型の人は失敗を学びととらえ挑み続ける", "見方自体は変えられ失敗を過程と言い換える習慣が上達を支える"],
+    quiz: [
+      { q: "能力を固定的と信じる人の傾向は？", choices: ["失敗を限界と見て困難を避ける", "失敗を学びと見る", "常に挑戦する", "努力を続ける"], answer: 0 },
+      { q: "成長型マインドセットの特徴は？", choices: ["失敗を学びの手がかりととらえる", "才能を重視する", "挑戦を避ける", "努力を諦める"], answer: 0 },
+      { q: "文章が強調する重要な点は？", choices: ["見方自体を変えられる", "能力は変わらない", "失敗は避けるべき", "才能が全て"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_psy_04", source: "builtin", category: "心理", title: "認知的負荷と学習",
+    text: "人が一度に頭の中で扱える情報の量には限りがある。この限られた作業領域に載せられる以上の情報が押し寄せると、理解も記憶もうまくいかなくなる。これを認知的負荷という。学習でつまずく原因の多くは、内容が難しいこと以上に、一度に処理しようとする情報が多すぎることにある。効果的な学びのこつは、この負荷を上手に管理することだ。大きな課題を小さく分ける、すでに覚えたことを土台にして新しいことを少しずつ足す、要点を図や具体例で軽くする、といった工夫が有効だ。詰め込むほど学べるわけではない。むしろ、限られた作業領域の容量に合わせて情報の流れを調整することが、深い理解と定着への近道なのである。",
+    keypoints: ["人が一度に扱える情報量には限りがある（認知的負荷）", "容量を超える情報が押し寄せると理解も記憶も損なわれる", "つまずきの多くは内容の難しさより情報量の多さによる", "課題を分け土台の上に少しずつ足すなど負荷管理が有効"],
+    quiz: [
+      { q: "認知的負荷とは？", choices: ["一度に扱える情報量の限界に関わる概念", "記憶の総量", "学習時間の長さ", "課題の難易度のみ"], answer: 0 },
+      { q: "学習のつまずきの主因として文章が挙げるのは？", choices: ["一度に処理する情報が多すぎること", "内容の難しさだけ", "やる気の欠如", "時間の不足"], answer: 0 },
+      { q: "有効な学びのこつは？", choices: ["課題を分け少しずつ足して負荷を管理する", "一気に詰め込む", "図や例を避ける", "土台を無視する"], answer: 0 }
+    ]
+  },
+  {
+    id: "b_psy_05", source: "builtin", category: "心理", title: "先延ばしの心理",
+    text: "やるべきだとわかっているのに、つい後回しにしてしまう。先延ばしは意志の弱さのように見えるが、その背後には感情の働きがある。人は目の前の不快を避けようとする傾向が強い。難しい課題は取りかかる瞬間に不安や退屈を伴うため、脳はそれを遠ざけ、今すぐ気分の良い別のことに逃げ込もうとする。つまり先延ばしは、将来の利益より目先の感情を優先する仕組みなのだ。この理解は対策の糸口になる。最初の一歩を極端に小さくして着手の負担を下げる、課題を具体的な行動に分解する、始める時刻と場所をあらかじめ決めておく、といった工夫が有効だ。動き出しさえすれば抵抗は薄れる。先延ばしは性格の欠陥ではなく、扱い方を学べる習慣の問題である。",
+    keypoints: ["先延ばしの背後には目先の不快を避ける感情の働きがある", "難題の着手時の不安や退屈から脳は逃げ気分の良いことに向かう", "先延ばしは将来の利益より目先の感情を優先する仕組み", "最初の一歩を小さくするなどの工夫で着手の負担を下げられる"],
+    quiz: [
+      { q: "先延ばしの背後にある主な要因は？", choices: ["目先の不快を避ける感情", "能力の欠如", "時間の不足", "知識の不足"], answer: 0 },
+      { q: "先延ばしの仕組みとして正しいのは？", choices: ["将来の利益より目先の感情を優先する", "常に合理的に判断する", "感情は無関係", "意志だけの問題"], answer: 0 },
+      { q: "有効な対策として挙げられているのは？", choices: ["最初の一歩を極端に小さくする", "一気に全部やる", "課題を大きくする", "着手を遅らせる"], answer: 0 }
+    ]
+  }
+];
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===================== 定数 =====================
+  var APP_VERSION = "v2026.07.12a";
+  var API_ENDPOINT = "https://tk.business126.workers.dev";
+  var API_MODEL = "claude-sonnet-4-5";        // ※要件: 既存GROWのモデル指定に合わせて調整（実装時の仮置き）
+  var API_TIMEOUT_MS = 15000;
+  var K_EVENTS = "sokucho_events";
+  var K_SETTINGS = "sokucho_settings";
+  var K_NEWS_CACHE = "sokucho_news_cache";
+  var RATE_MIN = 0.8, RATE_MAX = 3.0, RATE_STEP = 0.1;
+  var UP_QUIZ = 0.80, UP_COV = 0.60, DOWN_QUIZ = 0.50;
+
+  var MATERIALS = window.SOKUCHO_MATERIALS || [];
+
+  // ===================== ユーティリティ =====================
+  function localDateStr(d){
+    d = d || new Date();
+    var y = d.getFullYear();
+    var m = ("0"+(d.getMonth()+1)).slice(-2);
+    var day = ("0"+d.getDate()).slice(-2);
+    return y+"-"+m+"-"+day;
+  }
+  function uuid(){
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(c){
+      var r = Math.random()*16|0, v = c==="x"?r:(r&0x3|0x8);
+      return v.toString(16);
+    });
+  }
+  function charLen(s){ return s ? Array.from(s).length : 0; }
+  function clampRate(r){ return Math.min(RATE_MAX, Math.max(RATE_MIN, Math.round(r*10)/10)); }
+  function fmtRate(r){ return (Math.round(r*10)/10).toFixed(1); }
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function $(id){ return document.getElementById(id); }
+
+  // ===================== ストレージ =====================
+  function loadEvents(){
+    try{ var raw = localStorage.getItem(K_EVENTS); return raw ? JSON.parse(raw) : []; }
+    catch(e){ return []; }
+  }
+  function saveEvents(evts){
+    try{ localStorage.setItem(K_EVENTS, JSON.stringify(evts)); }catch(e){}
+  }
+  function appendEvent(evt){
+    var evts = loadEvents(); evts.push(evt); saveEvents(evts); return evts;
+  }
+  var DEFAULT_SETTINGS = { rate:1.0, defaultCourse:"builtin", voiceURI:"", upStreak:0, downStreak:0 };
+  function loadSettings(){
+    try{
+      var raw = localStorage.getItem(K_SETTINGS);
+      var s = raw ? JSON.parse(raw) : {};
+      var out = {};
+      for(var k in DEFAULT_SETTINGS){ out[k] = (s[k]!==undefined && s[k]!==null) ? s[k] : DEFAULT_SETTINGS[k]; }
+      out.rate = clampRate(out.rate);
+      return out;
+    }catch(e){ return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)); }
+  }
+  function saveSettings(s){
+    try{ localStorage.setItem(K_SETTINGS, JSON.stringify(s)); }catch(e){}
+  }
+
+  var SETTINGS = loadSettings();
+
+  // ===================== モーダル =====================
+  function modal(opts){
+    return new Promise(function(resolve){
+      var overlay = $("modal");
+      $("modal-title").textContent = opts.title || "";
+      $("modal-body").innerHTML = opts.html || esc(opts.message||"");
+      var acts = $("modal-actions");
+      acts.innerHTML = "";
+      var buttons = opts.buttons || [{label:"OK", value:true, kind:"ok"}];
+      buttons.forEach(function(b){
+        var btn = document.createElement("button");
+        btn.className = "m-"+(b.kind||"ok");
+        btn.textContent = b.label;
+        btn.addEventListener("click", function(){
+          overlay.classList.remove("active");
+          resolve(b.value);
+        });
+        acts.appendChild(btn);
+      });
+      overlay.classList.add("active");
+    });
+  }
+  function alertModal(title, message){
+    return modal({ title:title, message:message, buttons:[{label:"OK", value:true, kind:"ok"}] });
+  }
+  function confirmModal(title, message, okLabel, danger){
+    return modal({ title:title, message:message, buttons:[
+      {label:"キャンセル", value:false, kind:"cancel"},
+      {label:okLabel||"OK", value:true, kind:danger?"danger":"ok"}
+    ]});
+  }
+
+  // ===================== TTS エンジン（iOS 7点セット） =====================
+  var TTS = (function(){
+    var utterKeep = [];                 // (1) GC対策: グローバル参照保持
+    var voices = [];
+    var heartbeat = null;               // (5) resume ハートビート
+    var lastCancelAt = 0;               // (4) cancel後90ms
+
+    function loadVoices(){
+      try{ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }catch(e){ voices = []; }
+      return voices;
+    }
+    if(window.speechSynthesis){
+      loadVoices();
+      try{ speechSynthesis.onvoiceschanged = function(){ loadVoices(); }; }catch(e){}
+    }
+    function japaneseVoices(){
+      return (voices||[]).filter(function(v){ return /ja[-_]?/i.test(v.lang) || /japan/i.test(v.lang); });
+    }
+    function autoPickVoice(){
+      var ja = japaneseVoices();
+      if(!ja.length) return null;
+      var enh = ja.filter(function(v){ return /(enhanced|premium|拡張|neural)/i.test(v.name); });
+      if(enh.length) return enh[0];
+      var local = ja.filter(function(v){ return v.localService; });
+      if(local.length) return local[0];
+      return ja[0];
+    }
+    function resolveVoice(){
+      loadVoices();
+      if(SETTINGS.voiceURI){
+        var m = (voices||[]).filter(function(v){ return v.voiceURI === SETTINGS.voiceURI; });
+        if(m.length) return m[0];
+      }
+      return autoPickVoice();
+    }
+    function startHeartbeat(){
+      stopHeartbeat();
+      heartbeat = setInterval(function(){
+        try{ if(speechSynthesis.speaking) speechSynthesis.resume(); }catch(e){}
+      }, 3000);
+    }
+    function stopHeartbeat(){ if(heartbeat){ clearInterval(heartbeat); heartbeat = null; } }
+
+    function cancel(){
+      try{ speechSynthesis.cancel(); }catch(e){}
+      lastCancelAt = Date.now();
+      stopHeartbeat();
+    }
+
+    // speak: Promise を返し onend で resolve。実測秒を解決値に含める
+    function speak(text, rate, opts){
+      opts = opts || {};
+      return new Promise(function(resolve){
+        if(!window.speechSynthesis || !window.SpeechSynthesisUtterance){
+          // TTS非対応: 文字数から推定した時間だけ待つ疑似再生
+          var est = charLen(text) * 0.16 / (rate||1);
+          setTimeout(function(){ resolve({ measuredSec: est, ok:false }); }, Math.min(est*1000, 8000));
+          return;
+        }
+        var doSpeak = function(){
+          var u = new SpeechSynthesisUtterance(text);
+          u.lang = "ja-JP";
+          u.rate = clampRate(rate||1);          // (7) rateは生成時に固定
+          u.pitch = 1.0; u.volume = 1.0;
+          var v = resolveVoice();
+          if(v) u.voice = v;
+
+          var startAt = 0, ended = false, watchdog = null;
+          function finish(measured){
+            if(ended) return; ended = true;
+            if(watchdog){ clearTimeout(watchdog); watchdog = null; }
+            stopHeartbeat();
+            var idx = utterKeep.indexOf(u); if(idx>=0) utterKeep.splice(idx,1);
+            resolve({ measuredSec: measured, ok:true });
+          }
+          u.onstart = function(){ startAt = Date.now(); };     // (6) 実測開始
+          u.onend = function(){
+            var sec = startAt ? (Date.now()-startAt)/1000 : charLen(text)*0.16/u.rate;
+            finish(sec);
+          };
+          u.onerror = function(){
+            var sec = startAt ? (Date.now()-startAt)/1000 : charLen(text)*0.16/u.rate;
+            finish(sec);
+          };
+          utterKeep.push(u);                                   // (1)
+          // (3) 文字数ベースの watchdog（onend不発の保険）
+          var estMs = (charLen(text) * 0.18 / u.rate) * 1000 + 6000;
+          watchdog = setTimeout(function(){
+            var sec = startAt ? (Date.now()-startAt)/1000 : charLen(text)*0.16/u.rate;
+            try{ speechSynthesis.cancel(); }catch(e){}
+            finish(sec);
+          }, estMs);
+
+          try{ speechSynthesis.speak(u); }catch(e){ finish(charLen(text)*0.16/u.rate); return; }
+          startHeartbeat();                                    // (5)
+        };
+        // (4) 直前のcancelから90ms待つ
+        var wait = Math.max(0, 90 - (Date.now()-lastCancelAt));
+        try{ speechSynthesis.cancel(); }catch(e){}
+        lastCancelAt = Date.now();
+        setTimeout(doSpeak, 90);
+      });
+    }
+
+    return {
+      speak:speak, cancel:cancel, loadVoices:loadVoices,
+      japaneseVoices:japaneseVoices, resolveVoice:resolveVoice, autoPickVoice:autoPickVoice
+    };
+  })();
+
+  // ===================== 素材選択 =====================
+  function recentMaterialIds(n){
+    var evts = loadEvents().filter(function(e){ return e.type==="session"; });
+    var ids = evts.slice(-n).map(function(e){ return e.materialId; });
+    return ids;
+  }
+  function pickBuiltin(){
+    var recent = recentMaterialIds(10);
+    var pool = MATERIALS.filter(function(m){ return recent.indexOf(m.id) < 0; });
+    if(!pool.length) pool = MATERIALS.slice();
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  // ===================== Claude API =====================
+  function stripFence(s){
+    if(!s) return "";
+    s = s.trim();
+    s = s.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/,"");
+    // 最初の { から最後の } までを抜く保険
+    var a = s.indexOf("{"), b = s.lastIndexOf("}");
+    if(a>=0 && b>a) s = s.slice(a, b+1);
+    return s.trim();
+  }
+  function callClaude(userText, maxTokens){
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, API_TIMEOUT_MS);
+    return fetch(API_ENDPOINT, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "anthropic-version":"2023-06-01" },
+      body: JSON.stringify({
+        model: API_MODEL,
+        max_tokens: maxTokens||1024,
+        messages: [{ role:"user", content: userText }]
+      }),
+      signal: controller.signal
+    }).then(function(res){
+      clearTimeout(timer);
+      if(!res.ok) throw new Error("http "+res.status);
+      return res.json();
+    }).then(function(data){
+      var txt = "";
+      if(data && data.content && data.content.length){
+        for(var i=0;i<data.content.length;i++){ if(data.content[i].type==="text") txt += data.content[i].text; }
+      } else if(typeof data === "string"){ txt = data; }
+      return txt;
+    }).catch(function(e){ clearTimeout(timer); throw e; });
+  }
+
+  // 採点
+  function gradeRestate(material, userText){
+    var prompt =
+      "あなたは日本語の要約力を評価する採点者です。以下の【本文】と【要点】を踏まえ、【ユーザーの説明】を採点してください。\n"+
+      "出力はJSONオブジェクトのみ。前置き・コードフェンス・説明文を一切付けないこと。\n"+
+      "スキーマ: {\"coverage\":0-100の整数,\"structure\":0-100の整数,\"ownWords\":0-100の整数,\"missedKeypoints\":[言及されなかった要点の文字列配列],\"goodPoint\":\"良かった点を1文\",\"advice\":\"次に伸ばす点を1〜2文で具体的に\"}\n"+
+      "coverage=要点の網羅率、structure=結論→根拠の論理構造の明確さ、ownWords=丸写しでなく自分の言葉になっているか。\n\n"+
+      "【本文】\n"+material.text+"\n\n"+
+      "【要点】\n"+material.keypoints.map(function(k,i){return (i+1)+". "+k;}).join("\n")+"\n\n"+
+      "【ユーザーの説明】\n"+userText;
+    return callClaude(prompt, 700).then(function(txt){
+      var obj = JSON.parse(stripFence(txt));
+      if(typeof obj.coverage!=="number" || typeof obj.structure!=="number" || typeof obj.ownWords!=="number")
+        throw new Error("schema");
+      obj.coverage = Math.max(0,Math.min(100,Math.round(obj.coverage)));
+      obj.structure = Math.max(0,Math.min(100,Math.round(obj.structure)));
+      obj.ownWords = Math.max(0,Math.min(100,Math.round(obj.ownWords)));
+      if(!Array.isArray(obj.missedKeypoints)) obj.missedKeypoints = [];
+      obj.goodPoint = String(obj.goodPoint||"");
+      obj.advice = String(obj.advice||"");
+      return obj;
+    });
+  }
+
+  // ニュース素材生成（web_search未検証のため普遍的な時事教養テーマを生成 → 「最新ではない」旨を明示）
+  function validateMaterialObj(o){
+    if(!o || typeof o.text!=="string") return false;
+    var len = charLen(o.text);
+    if(len < 180 || len > 600) return false;
+    if(!Array.isArray(o.keypoints) || o.keypoints.length<3 || o.keypoints.length>5) return false;
+    if(!Array.isArray(o.quiz) || o.quiz.length!==3) return false;
+    for(var i=0;i<o.quiz.length;i++){
+      var q = o.quiz[i];
+      if(!q || typeof q.q!=="string" || !Array.isArray(q.choices) || q.choices.length!==4) return false;
+      if(typeof q.answer!=="number" || q.answer<0 || q.answer>3) return false;
+    }
+    return true;
+  }
+  function genNewsPrompt(){
+    return "日本語学習者向けの『教養ニュース素材』を1本、JSONオブジェクトのみで生成してください。前置き・コードフェンス禁止、JSON以外を一切出力しないこと。\n"+
+      "テーマは、時事的で普遍的な教養トピック（社会・経済・科学技術・国際情勢の動向など）から1つ選ぶこと。\n"+
+      "本文は250〜380文字の日本語で、単一トピック・明確な論理構造（主張→根拠→帰結）を持たせること。\n"+
+      "スキーマ: {\"title\":\"タイトル\",\"category\":\"時事\",\"text\":\"本文\",\"keypoints\":[\"要点\",...3〜5個],\"quiz\":[{\"q\":\"設問\",\"choices\":[\"A\",\"B\",\"C\",\"D\"],\"answer\":正解の0-3index},...3問]}\n"+
+      "quizは因果関係や主旨の理解を問い、単語当てにしないこと。";
+  }
+  function generateNews(){
+    var today = localDateStr();
+    try{
+      var cache = JSON.parse(localStorage.getItem(K_NEWS_CACHE)||"null");
+      if(cache && cache.date===today && cache.material) return Promise.resolve(cache.material);
+    }catch(e){}
+    function attempt(){
+      return callClaude(genNewsPrompt(), 1200).then(function(txt){
+        var o = JSON.parse(stripFence(txt));
+        if(!validateMaterialObj(o)) throw new Error("schema");
+        return o;
+      });
+    }
+    return attempt().catch(function(){ return attempt(); }).then(function(o){
+      var mat = {
+        id: "api_"+today+"_"+Math.floor(Math.random()*1000),
+        source:"api", category: o.category||"時事", title:o.title||"今日の教養ニュース",
+        text:o.text, keypoints:o.keypoints, quiz:o.quiz, notLatest:true
+      };
+      try{ localStorage.setItem(K_NEWS_CACHE, JSON.stringify({date:today, material:mat})); }catch(e){}
+      return mat;
+    });
+  }
+
+  function resolveMaterial(course){
+    if(course==="auto") course = Math.random()<0.5 ? "news" : "builtin";
+    if(course==="news"){
+      return generateNews().catch(function(){ return pickBuiltin(); });
+    }
+    return Promise.resolve(pickBuiltin());
+  }
+
+  // ===================== 集計 =====================
+  function sessions(){ return loadEvents().filter(function(e){ return e.type==="session"; }); }
+  function isTodayDone(){
+    var t = localDateStr();
+    return sessions().some(function(e){ return e.dateLocal===t; });
+  }
+  function computeStreak(){
+    var days = {};
+    sessions().forEach(function(e){ days[e.dateLocal] = true; });
+    var streak = 0;
+    var d = new Date();
+    // 今日が未完了でも、昨日までの連続を切らさない: 今日未完なら昨日から数える
+    if(!days[localDateStr(d)]) d.setDate(d.getDate()-1);
+    while(days[localDateStr(d)]){ streak++; d.setDate(d.getDate()-1); }
+    return streak;
+  }
+  function latestCpm(){
+    var s = sessions();
+    return s.length ? s[s.length-1].comprehensibleCpm : null;
+  }
+  function bestCpm(){
+    var s = sessions(); if(!s.length) return null;
+    return s.reduce(function(m,e){ return Math.max(m, e.comprehensibleCpm||0); }, 0);
+  }
+  // 直近30日の日次平均CPM + 7日移動平均
+  function dailySeries(){
+    var s = sessions();
+    var byDay = {};
+    s.forEach(function(e){
+      (byDay[e.dateLocal] = byDay[e.dateLocal] || []).push(e.comprehensibleCpm||0);
+    });
+    var out = [];
+    var d = new Date();
+    for(var i=29;i>=0;i--){
+      var dd = new Date(); dd.setDate(d.getDate()-i);
+      var key = localDateStr(dd);
+      var arr = byDay[key];
+      var val = arr ? Math.round(arr.reduce(function(a,b){return a+b;},0)/arr.length) : null;
+      out.push({ date:key, value:val });
+    }
+    // 7日移動平均（値のある日を対象）
+    for(var j=0;j<out.length;j++){
+      var win = [];
+      for(var k=Math.max(0,j-6);k<=j;k++){ if(out[k].value!=null) win.push(out[k].value); }
+      out[j].avg = win.length ? Math.round(win.reduce(function(a,b){return a+b;},0)/win.length) : null;
+    }
+    return out;
+  }
+
+  // ===================== ステアケース =====================
+  function decideLevelChange(quizAcc, coverage){
+    var metUp = (quizAcc >= UP_QUIZ) && (coverage/100 >= UP_COV);
+    var metDown = (quizAcc < DOWN_QUIZ);
+    var change = "keep";
+    if(metUp){
+      SETTINGS.upStreak = (SETTINGS.upStreak||0) + 1;
+      SETTINGS.downStreak = 0;
+      if(SETTINGS.upStreak >= 2){
+        var nr = clampRate(SETTINGS.rate + RATE_STEP);
+        if(nr > SETTINGS.rate){ SETTINGS.rate = nr; change = "up"; }
+        SETTINGS.upStreak = 0;
+      }
+    } else if(metDown){
+      SETTINGS.downStreak = (SETTINGS.downStreak||0) + 1;
+      SETTINGS.upStreak = 0;
+      if(SETTINGS.downStreak >= 2){
+        var nr2 = clampRate(SETTINGS.rate - RATE_STEP);
+        if(nr2 < SETTINGS.rate){ SETTINGS.rate = nr2; change = "down"; }
+        SETTINGS.downStreak = 0;
+      }
+    } else {
+      SETTINGS.upStreak = 0; SETTINGS.downStreak = 0;
+    }
+    saveSettings(SETTINGS);
+    return change;
+  }
+  function levelReason(change, quizAcc, coverage){
+    var qp = Math.round(quizAcc*100);
+    if(change==="up") return "クイズ正答率 "+qp+"% とカバレッジ "+coverage+"% の好成績を2セッション連続で達成しました。";
+    if(change==="down") return "クイズ正答率 "+qp+"% が2セッション連続で50%を下回ったため、速度を調整しました。";
+    if(quizAcc>=UP_QUIZ && coverage/100>=UP_COV) return "昇格条件を1回達成。もう1セッション連続で達成すると速度が上がります。";
+    return "現在の速度でしっかり定着させましょう。正答率80%・カバレッジ60%を2連続で速度が上がります。";
+  }
+
+  // ===================== SVG チャート =====================
+  function renderChart(host){
+    var series = dailySeries();
+    var hasData = series.some(function(p){ return p.value!=null; });
+    if(!hasData){
+      host.innerHTML = '<div class="chart-empty">まだデータがありません。<br>訓練を始めると推移が表示されます。</div>';
+      return;
+    }
+    var W=520, H=180, padL=38, padR=10, padT=14, padB=22;
+    var iw = W-padL-padR, ih = H-padT-padB;
+    var vals = series.map(function(p){return p.value;}).filter(function(v){return v!=null;})
+      .concat(series.map(function(p){return p.avg;}).filter(function(v){return v!=null;}));
+    var maxV = Math.max.apply(null, vals), minV = Math.min.apply(null, vals);
+    var top = Math.ceil((maxV*1.1)/50)*50 || 50;
+    var bot = Math.max(0, Math.floor((minV*0.9)/50)*50);
+    if(top===bot) top = bot+50;
+    var n = series.length;
+    function x(i){ return padL + (n<=1?0:(i/(n-1))*iw); }
+    function y(v){ return padT + ih - ((v-bot)/(top-bot))*ih; }
+
+    var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block">';
+    // グリッド + Y軸ラベル
+    var lines = 4;
+    for(var g=0; g<=lines; g++){
+      var gv = bot + (top-bot)*g/lines;
+      var gy = y(gv);
+      svg += '<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+gy.toFixed(1)+'" stroke="#eef2f7" stroke-width="1"/>';
+      svg += '<text x="'+(padL-6)+'" y="'+(gy+3).toFixed(1)+'" font-size="9" fill="#8a94a6" text-anchor="end">'+Math.round(gv)+'</text>';
+    }
+    // 日次: 折れ線＋点（欠損はつながず点で）
+    var dpath = "", started=false;
+    series.forEach(function(p,i){
+      if(p.value==null){ started=false; return; }
+      dpath += (started?" L":" M")+x(i).toFixed(1)+" "+y(p.value).toFixed(1);
+      started=true;
+    });
+    if(dpath) svg += '<path d="'+dpath+'" fill="none" stroke="#3a6ea8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    // 7日平均: 破線
+    var apath="", astarted=false;
+    series.forEach(function(p,i){
+      if(p.avg==null){ astarted=false; return; }
+      apath += (astarted?" L":" M")+x(i).toFixed(1)+" "+y(p.avg).toFixed(1);
+      astarted=true;
+    });
+    if(apath) svg += '<path d="'+apath+'" fill="none" stroke="#c08a2d" stroke-width="1.8" stroke-dasharray="4 3" stroke-linecap="round"/>';
+    // 点
+    series.forEach(function(p,i){
+      if(p.value!=null) svg += '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(p.value).toFixed(1)+'" r="2.6" fill="#3a6ea8"/>';
+    });
+    svg += '</svg>';
+    host.innerHTML = svg;
+  }
+
+  // ===================== ナビゲーション =====================
+  function showScreen(name){
+    ["home","history","settings"].forEach(function(s){
+      var el = $("screen-"+s);
+      if(el) el.classList.toggle("active", s===name);
+    });
+    var nav = $("navbar");
+    Array.prototype.forEach.call(nav.querySelectorAll("button"), function(b){
+      b.classList.toggle("active", b.getAttribute("data-nav")===name);
+    });
+    if(name==="home") renderHome();
+    if(name==="history") renderHistory();
+    if(name==="settings") renderSettings();
+    window.scrollTo(0,0);
+  }
+
+  // ===================== ホーム描画 =====================
+  function renderHome(){
+    $("home-speed").innerHTML = fmtRate(SETTINGS.rate)+'<span>x</span>';
+    var done = isTodayDone();
+    var st = $("home-status");
+    st.innerHTML = '<span class="dot'+(done?" done":"")+'"></span>今日の訓練：'+(done?"完了":"未完了");
+    var lc = latestCpm();
+    $("home-cpm").textContent = "理解可能CPM："+(lc!=null? lc+" 文字/分" : "—");
+    var btn = document.querySelector('[data-act="start-training"]');
+    btn.textContent = done ? "もう一度訓練する" : "今日の訓練を開始";
+    btn.classList.toggle("done", done);
+    $("stat-streak").innerHTML = computeStreak()+'<small>日</small>';
+    $("stat-total").textContent = sessions().length;
+    var bc = bestCpm();
+    $("stat-bestcpm").textContent = bc!=null? bc : "—";
+    renderChart($("chart-host"));
+    $("footer-ver").textContent = "GROW Listen 速聴トレーナー "+APP_VERSION;
+  }
+
+  // ===================== 履歴描画 =====================
+  function renderHistory(){
+    var host = $("history-host");
+    var s = sessions().slice().reverse();
+    if(!s.length){
+      host.innerHTML = '<div class="card" style="text-align:center;color:var(--sub);padding:34px 18px">まだ記録がありません。<br>ホームから訓練を始めましょう。</div>';
+      return;
+    }
+    host.innerHTML = s.map(function(e, idx){
+      var mat = findMaterialMeta(e.materialId, e);
+      var title = mat.title;
+      var acc = e.quiz ? Math.round(e.quiz.correct/e.quiz.n*100) : 0;
+      var lvb = e.levelChange==="up" ? '<span class="lv-badge up">▲'+fmtRate(e.rate)+'</span>'
+              : e.levelChange==="down" ? '<span class="lv-badge down">▼'+fmtRate(e.rate)+'</span>' : "";
+      var srcBadge = e.source==="api" ? '<span class="badge-src api">ニュース</span>' : '<span class="badge-src">教養</span>';
+      return '<button class="hist-item" data-hist="'+esc(e.id)+'">'+
+        '<div class="hi-main">'+
+          '<div class="hi-title">'+esc(title)+srcBadge+'</div>'+
+          '<div class="hi-meta">'+esc(e.dateLocal)+' ・ '+fmtRate(e.rate)+'x ・ 正答'+acc+'%'+lvb+'</div>'+
+        '</div>'+
+        '<div class="hi-score"><div class="s">'+(e.comprehensibleCpm!=null?e.comprehensibleCpm:"—")+'</div><div class="l">CPM</div></div>'+
+      '</button>';
+    }).join("");
+  }
+  function findMaterialMeta(id, evt){
+    var m = MATERIALS.filter(function(x){return x.id===id;})[0];
+    if(m) return m;
+    if(evt && evt.materialTitle) return { title:evt.materialTitle, text:"", keypoints:[] };
+    return { title:(evt&&evt.source==="api")?"ニュース素材":"（素材）", text:"", keypoints:[] };
+  }
+  function showHistoryDetail(id){
+    var e = sessions().filter(function(x){return x.id===id;})[0];
+    if(!e) return;
+    var acc = e.quiz ? Math.round(e.quiz.correct/e.quiz.n*100) : 0;
+    var r = e.restate || {};
+    var modeLabel = {speech:"音声認識",text:"文字入力",self:"セルフチェック"}[r.mode] || r.mode || "-";
+    var html = '<p><b>'+esc(findMaterialMeta(e.materialId, e).title)+'</b></p>'+
+      '<p style="font-size:12.5px;color:var(--sub)">'+esc(e.dateLocal)+' ・ '+esc(e.category||"")+' ・ '+(e.source==="api"?"ニュース":"教養")+'</p>'+
+      '<h4>スコア</h4>'+
+      '<p>速度 '+fmtRate(e.rate)+'x'+(e.replayed?"（もう一度聴く使用）":"")+'<br>'+
+      '実効CPM '+ (e.effectiveCpm!=null?e.effectiveCpm:"—") +' / 理解可能CPM <b>'+(e.comprehensibleCpm!=null?e.comprehensibleCpm:"—")+'</b><br>'+
+      'クイズ '+(e.quiz?e.quiz.correct+"/"+e.quiz.n:"—")+'（'+acc+'%）</p>'+
+      '<h4>説明の評価（'+esc(modeLabel)+'）</h4>'+
+      '<p>カバレッジ '+(r.coverage!=null?r.coverage:"—")+'％'+
+      (r.structure!=null?' / 構造 '+r.structure+'％':'')+
+      (r.ownWords!=null?' / 自分の言葉 '+r.ownWords+'％':'')+'</p>'+
+      (r.goodPoint?'<p style="color:var(--okink)">◎ '+esc(r.goodPoint)+'</p>':'')+
+      (r.advice?'<p>💡 '+esc(r.advice)+'</p>':'');
+    modal({ title:"セッション詳細", html:html, buttons:[{label:"閉じる", value:true, kind:"cancel"}] });
+  }
+
+  // ===================== 設定描画 =====================
+  function renderSettings(){
+    // 声リスト
+    TTS.loadVoices();
+    var sel = $("voice-select");
+    var ja = TTS.japaneseVoices();
+    var auto = TTS.autoPickVoice();
+    var opts = '<option value="">自動選択'+(auto?"（"+esc(auto.name)+"）":"")+'</option>';
+    ja.forEach(function(v){
+      var enhanced = /(enhanced|premium|拡張|neural)/i.test(v.name);
+      opts += '<option value="'+esc(v.voiceURI)+'"'+(SETTINGS.voiceURI===v.voiceURI?" selected":"")+'>'+
+              esc(v.name)+(enhanced?" ★高品質":"")+'</option>';
+    });
+    if(!ja.length) opts += '<option value="" disabled>日本語の声が見つかりません</option>';
+    sel.innerHTML = opts;
+
+    $("course-select").value = SETTINGS.defaultCourse;
+    $("manual-speed").textContent = fmtRate(SETTINGS.rate)+"x";
+    $("footer-ver2").textContent = "GROW Listen 速聴トレーナー "+APP_VERSION;
+  }
+
+  function whyItWorksHtml(){
+    return '<div style="font-size:13.5px;line-height:1.75;color:var(--ink)">'+
+      '<p>速聴トレーナーは、聴く力を4つの段階（聴く→理解→体系化→自分の言葉で話す）で鍛えます。設計は次の知見に基づいています。</p>'+
+      '<h4>① 時間圧縮音声への知覚順応</h4>'+
+      '<p>倍速音声の聴解力は、短時間の反復訓練で向上することが知られています。順応は訓練した速度帯の周辺へ般化します。だから毎日、現在の速度で聴きます。</p>'+
+      '<h4>② 検索練習・生成効果</h4>'+
+      '<p>聴いた内容を「自分の言葉で再生する」行為そのものが、再読・再聴より強く理解と長期定着を高めます。毎回この工程を必ず入れます。</p>'+
+      '<h4>③ 段階的過負荷＋即時フィードバック</h4>'+
+      '<p>正答率80%前後の負荷と直後の具体的フィードバックが上達を最速化します。適応型ステアケースで速度を自動調整します。</p>'+
+      '<h4>④ 課題多様性による転移</h4>'+
+      '<p>話題や構造の多様な素材で訓練することで、単一素材への過適応を防ぎます。教養×ニュースの2系統を用意しています。</p>'+
+      '</div>';
+  }
+
+  // ===================== トレーニング・ウィザード =====================
+  var TrainState = null;
+
+  function startTraining(){
+    var course = SETTINGS.defaultCourse;
+    openWizard();
+    setWizardStep(0);
+    renderLoading("素材を準備しています…");
+    resolveMaterial(course).then(function(mat){
+      TrainState = {
+        material: mat,
+        rate: SETTINGS.rate,
+        replayed: false,
+        measuredSec: 0,
+        quizAnswers: [],
+        quizCorrect: 0,
+        restate: null,
+        stepIndex: 0
+      };
+      renderListenStep();
+    }).catch(function(){
+      var mat = pickBuiltin();
+      TrainState = { material:mat, rate:SETTINGS.rate, replayed:false, measuredSec:0, quizAnswers:[], quizCorrect:0, restate:null, stepIndex:0 };
+      renderListenStep();
+    });
+  }
+
+  function openWizard(){ $("wizard").classList.add("active"); }
+  function closeWizard(){
+    TTS.cancel();
+    $("wizard").classList.remove("active");
+    TrainState = null;
+    showScreen("home");
+  }
+  function setWizardStep(i){
+    var pct = [20,40,60,80,100][i] || 20;
+    $("wiz-progress").style.width = pct+"%";
+    $("wiz-step-lab").textContent = (i+1)+"/5";
+  }
+  function renderLoading(msg){
+    $("wiz-body").innerHTML = '<div style="padding:60px 0"><div class="spinner"></div><div class="loading-text">'+esc(msg)+'</div></div>';
+  }
+
+  // ---- STEP 1: 聴く ----
+  function renderListenStep(){
+    setWizardStep(0);
+    var m = TrainState.material;
+    var disc = m.notLatest ? '<div class="disclaimer">※ この素材は最新のニュースではありません（普遍的な時事教養テーマです）</div>' : '';
+    $("wiz-body").innerHTML =
+      '<span class="cat-chip">STEP 1 ・ 聴く（'+esc(m.category)+'）</span>'+
+      '<h2>集中して聴きましょう</h2>'+
+      '<p class="lead">本文は表示されません。'+fmtRate(TrainState.rate)+'x の速度で読み上げます。</p>'+
+      disc+
+      '<div class="listen-stage">'+
+        '<div class="wave" id="wave">'+Array(9).join('<i></i>')+'<i></i></div>'+
+        '<div class="timer" id="listen-timer">0.0s</div>'+
+        '<div class="listen-meta" id="listen-meta">再生の準備ができました</div>'+
+      '</div>'+
+      '<button class="primary" data-act="play-listen">▶ 再生する</button>'+
+      '<button class="ghost" data-act="replay-listen" id="replay-btn" disabled>もう一度聴く（1回まで）</button>'+
+      '<button class="primary" data-act="go-quiz" id="to-quiz-btn" disabled style="margin-top:14px;background:var(--okink);box-shadow:0 4px 12px rgba(47,125,79,.28)">理解クイズへ進む</button>';
+  }
+
+  var listenTimerHandle = null;
+  function playListen(isReplay){
+    var m = TrainState.material;
+    var wave = $("wave"); if(wave) wave.classList.add("playing");
+    var meta = $("listen-meta"); if(meta) meta.textContent = "再生中…";
+    var playBtn = document.querySelector('[data-act="play-listen"]');
+    var replayBtn = $("replay-btn");
+    if(playBtn) playBtn.disabled = true;
+    if(replayBtn) replayBtn.disabled = true;
+
+    var t0 = Date.now();
+    if(listenTimerHandle) clearInterval(listenTimerHandle);
+    listenTimerHandle = setInterval(function(){
+      var el = $("listen-timer");
+      if(el) el.textContent = ((Date.now()-t0)/1000).toFixed(1)+"s";
+    }, 100);
+
+    TTS.speak(m.text, TrainState.rate).then(function(res){
+      if(listenTimerHandle){ clearInterval(listenTimerHandle); listenTimerHandle=null; }
+      var el = $("listen-timer"); if(el) el.textContent = res.measuredSec.toFixed(1)+"s";
+      if(wave) wave.classList.remove("playing");
+      // 実効CPMは最初の1回の実測を採用（もう一度は測定に含めない）
+      if(!isReplay) TrainState.measuredSec = res.measuredSec;
+      var meta2 = $("listen-meta");
+      if(meta2) meta2.textContent = "再生が終わりました";
+      var toQuiz = $("to-quiz-btn"); if(toQuiz) toQuiz.disabled = false;
+      var rb = $("replay-btn");
+      if(rb && !TrainState.replayed) rb.disabled = false;
+      var pb = document.querySelector('[data-act="play-listen"]');
+      if(pb && !isReplay){ pb.disabled = false; pb.textContent = "▶ もう一度再生"; }
+    });
+  }
+  function replayListen(){
+    if(TrainState.replayed) return;
+    TrainState.replayed = true;
+    var rb = $("replay-btn"); if(rb){ rb.disabled = true; rb.textContent = "もう一度聴く（使用済み）"; }
+    playListen(true);
+  }
+
+  // ---- STEP 2: 理解クイズ ----
+  function renderQuizStep(){
+    setWizardStep(1);
+    TrainState.quizIndex = 0;
+    TrainState.quizAnswers = [];
+    TrainState.quizCorrect = 0;
+    showQuizQuestion();
+  }
+  function showQuizQuestion(){
+    var m = TrainState.material;
+    var i = TrainState.quizIndex;
+    var q = m.quiz[i];
+    var html =
+      '<span class="cat-chip">STEP 2 ・ 理解</span>'+
+      '<div class="quiz-progress">問題 '+(i+1)+' / '+m.quiz.length+'</div>'+
+      '<div class="quiz-q">'+esc(q.q)+'</div>'+
+      '<div id="quiz-choices">';
+    q.choices.forEach(function(c, idx){
+      var mk = ["A","B","C","D"][idx];
+      html += '<button class="quiz-choice" data-quiz-choice="'+idx+'"><span class="mk">'+mk+'</span><span>'+esc(c)+'</span></button>';
+    });
+    html += '</div><div id="quiz-fb-host"></div>';
+    $("wiz-body").innerHTML = html;
+  }
+  function answerQuiz(choiceIdx){
+    var m = TrainState.material;
+    var i = TrainState.quizIndex;
+    var q = m.quiz[i];
+    var correct = (choiceIdx === q.answer);
+    if(correct) TrainState.quizCorrect++;
+    TrainState.quizAnswers.push(choiceIdx);
+    var choices = document.querySelectorAll("#quiz-choices .quiz-choice");
+    Array.prototype.forEach.call(choices, function(btn, idx){
+      btn.classList.add("disabled");
+      if(idx === q.answer) btn.classList.add("correct");
+      if(idx === choiceIdx && !correct) btn.classList.add("wrong");
+    });
+    var fb = $("quiz-fb-host");
+    var isLast = (i === m.quiz.length-1);
+    fb.innerHTML = '<div class="quiz-fb '+(correct?"ok":"ng")+'">'+(correct?"正解！":"不正解")+'</div>'+
+      '<button class="primary" data-act="quiz-next">'+(isLast?"説明ステップへ":"次の問題へ")+'</button>';
+  }
+  function nextQuiz(){
+    var m = TrainState.material;
+    if(TrainState.quizIndex < m.quiz.length-1){
+      TrainState.quizIndex++;
+      showQuizQuestion();
+    } else {
+      renderRestateStep();
+    }
+  }
+
+  // ---- STEP 3: 話す ----
+  var Recog = null, recogSupported = null, recognizing = false;
+  function recogAvailable(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+
+  function renderRestateStep(){
+    setWizardStep(2);
+    TrainState.restate = { mode:"text", text:"" };
+    var speechOk = recogAvailable();
+    var html =
+      '<span class="cat-chip">STEP 3 ・ 話す</span>'+
+      '<h2>60秒で説明</h2>'+
+      '<p class="lead">今の内容を、初めて聞く人に説明するつもりで、自分の言葉でまとめてください。</p>';
+    if(speechOk){
+      html += '<div class="seg">'+
+        '<button data-mode="speech" class="active">🎙 音声モード</button>'+
+        '<button data-mode="text">⌨️ 文字モード</button>'+
+      '</div>';
+    }
+    html += '<div id="restate-body"></div>';
+    $("wiz-body").innerHTML = html;
+    setRestateMode(speechOk ? "speech" : "text");
+  }
+  function setRestateMode(mode){
+    TrainState.restate.mode = mode;
+    Array.prototype.forEach.call(document.querySelectorAll('.seg [data-mode]'), function(b){
+      b.classList.toggle("active", b.getAttribute("data-mode")===mode);
+    });
+    var host = $("restate-body");
+    var prev = TrainState.restate.text || "";
+    if(mode==="speech"){
+      host.innerHTML =
+        '<button class="rec-btn" data-act="rec-toggle" id="rec-btn"><span class="rdot"></span>録音を開始</button>'+
+        '<div class="interim" id="rec-interim"></div>'+
+        '<textarea id="restate-text" placeholder="録音した内容がここに表示されます。手で修正できます。">'+esc(prev)+'</textarea>'+
+        '<div class="char-count" id="rt-count">'+charLen(prev)+' 文字</div>'+
+        '<button class="primary" data-act="restate-submit" style="margin-top:14px">この内容で評価する</button>';
+    } else {
+      host.innerHTML =
+        '<textarea id="restate-text" placeholder="ここに説明を入力してください。">'+esc(prev)+'</textarea>'+
+        '<div class="char-count" id="rt-count">'+charLen(prev)+' 文字</div>'+
+        '<button class="primary" data-act="restate-submit" style="margin-top:14px">この内容で評価する</button>';
+    }
+    var ta = $("restate-text");
+    if(ta){
+      ta.addEventListener("input", function(){
+        TrainState.restate.text = ta.value;
+        var c = $("rt-count"); if(c) c.textContent = charLen(ta.value)+" 文字";
+      });
+    }
+  }
+  function toggleRecording(){
+    if(!recogAvailable()){ setRestateMode("text"); return; }
+    if(recognizing){ stopRecognition(); return; }
+    startRecognition();
+  }
+  function startRecognition(){
+    var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    try{
+      Recog = new Ctor();
+      Recog.lang = "ja-JP";
+      Recog.interimResults = true;
+      Recog.continuous = true;
+      var baseText = TrainState.restate.text || "";
+      Recog.onresult = function(ev){
+        var interim = "", finalAdd = "";
+        for(var i=ev.resultIndex; i<ev.results.length; i++){
+          var r = ev.results[i];
+          if(r.isFinal) finalAdd += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        if(finalAdd){
+          baseText = (baseText + finalAdd).trim();
+          TrainState.restate.text = baseText;
+          var ta = $("restate-text"); if(ta) ta.value = baseText;
+          var c = $("rt-count"); if(c) c.textContent = charLen(baseText)+" 文字";
+        }
+        var iv = $("rec-interim"); if(iv) iv.textContent = interim;
+      };
+      Recog.onerror = function(ev){
+        recognizing = false; updateRecBtn();
+        if(ev.error==="not-allowed" || ev.error==="service-not-allowed"){
+          alertModal("マイクを使えません", "音声認識が使用できないため、文字入力モードに切り替えます。").then(function(){ setRestateMode("text"); });
+        } else if(ev.error==="no-speech"){
+          var iv = $("rec-interim"); if(iv) iv.textContent = "（音声を検出できませんでした）";
+        }
+      };
+      Recog.onend = function(){ recognizing = false; updateRecBtn(); };
+      Recog.start();
+      recognizing = true; updateRecBtn();
+    }catch(e){
+      recognizing = false;
+      alertModal("音声認識エラー", "音声認識を開始できませんでした。文字入力モードに切り替えます。").then(function(){ setRestateMode("text"); });
+    }
+  }
+  function stopRecognition(){
+    try{ if(Recog) Recog.stop(); }catch(e){}
+    recognizing = false; updateRecBtn();
+    var iv = $("rec-interim"); if(iv) iv.textContent = "";
+  }
+  function updateRecBtn(){
+    var b = $("rec-btn"); if(!b) return;
+    b.classList.toggle("recording", recognizing);
+    b.innerHTML = '<span class="rdot"></span>'+(recognizing?"録音を停止":"録音を開始");
+  }
+
+  function submitRestate(){
+    var ta = $("restate-text");
+    var text = ta ? ta.value.trim() : (TrainState.restate.text||"").trim();
+    if(charLen(text) < 10){
+      alertModal("もう少し説明を", "自分の言葉で、もう少し詳しく説明してみましょう（10文字以上）。");
+      return;
+    }
+    stopRecognition();
+    TrainState.restate.text = text;
+    renderEvalStep();
+  }
+
+  // ---- STEP 4: 評価 ----
+  function renderEvalStep(){
+    setWizardStep(3);
+    renderLoading("あなたの説明をClaudeが採点しています…");
+    var m = TrainState.material;
+    gradeRestate(m, TrainState.restate.text).then(function(res){
+      TrainState.restate.coverage = res.coverage;
+      TrainState.restate.structure = res.structure;
+      TrainState.restate.ownWords = res.ownWords;
+      TrainState.restate.missedKeypoints = res.missedKeypoints;
+      TrainState.restate.goodPoint = res.goodPoint;
+      TrainState.restate.advice = res.advice;
+      showEvalResult(res, false);
+    }).catch(function(){
+      // フォールバック: セルフチェックUI
+      renderSelfCheck();
+    });
+  }
+  function showEvalResult(res, isSelf){
+    var m = TrainState.material;
+    var missed = (res.missedKeypoints||[]).length
+      ? '<div class="fb-card card" style="margin-top:4px"><h4>言及されなかった要点</h4>'+
+        (res.missedKeypoints.map(function(k){return '<span class="missed-chip">'+esc(k)+'</span>';}).join(""))+'</div>'
+      : '';
+    var html =
+      '<span class="cat-chip">STEP 4 ・ 評価</span>'+
+      '<h2>説明の採点</h2>'+
+      '<div class="metric-row">'+
+        '<div class="metric"><div class="mv" style="color:var(--blue)">'+res.coverage+'</div><div class="ml">カバレッジ</div></div>'+
+        '<div class="metric"><div class="mv" style="color:var(--amber)">'+res.structure+'</div><div class="ml">構造化</div></div>'+
+        '<div class="metric"><div class="mv" style="color:var(--okink)">'+res.ownWords+'</div><div class="ml">自分の言葉</div></div>'+
+      '</div>'+
+      (res.goodPoint?'<div class="fb-card good card"><h4>◎ 良かった点</h4><p>'+esc(res.goodPoint)+'</p></div>':'')+
+      (res.advice?'<div class="fb-card card"><h4>💡 次に伸ばす点</h4><p>'+esc(res.advice)+'</p></div>':'')+
+      missed+
+      '<button class="primary" data-act="finish-session" style="margin-top:16px">結果を見る</button>';
+    $("wiz-body").innerHTML = html;
+  }
+  function renderSelfCheck(){
+    var m = TrainState.material;
+    TrainState.restate.mode = "self";
+    TrainState.selfSaid = {};
+    var html =
+      '<span class="cat-chip">STEP 4 ・ セルフチェック</span>'+
+      '<h2>要点を自己採点</h2>'+
+      '<p class="lead">API評価が使えないため、要点ごとに「言えた／言えなかった」を選んでください。</p>'+
+      '<div id="selfcheck-list">';
+    m.keypoints.forEach(function(k, i){
+      html += '<div class="selfcheck-item">'+
+        '<div class="kp">'+esc(k)+'</div>'+
+        '<div class="toggle">'+
+          '<button data-self="'+i+'" data-said="1">◯</button>'+
+          '<button data-self="'+i+'" data-said="0">✕</button>'+
+        '</div></div>';
+    });
+    html += '</div><button class="primary" data-act="selfcheck-submit" style="margin-top:8px">結果を見る</button>';
+    $("wiz-body").innerHTML = html;
+  }
+  function toggleSelfCheck(idx, said){
+    TrainState.selfSaid[idx] = said;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-self="'+idx+'"]'), function(b){
+      var v = b.getAttribute("data-said")==="1";
+      b.classList.remove("said","notsaid");
+      if(TrainState.selfSaid[idx]===undefined) return;
+      if(v && said){ b.classList.add("said"); }
+      if(!v && !said){ b.classList.add("notsaid"); }
+    });
+  }
+  function submitSelfCheck(){
+    var m = TrainState.material;
+    var total = m.keypoints.length;
+    var said = 0;
+    for(var i=0;i<total;i++){ if(TrainState.selfSaid[i]) said++; }
+    var coverage = Math.round(said/total*100);
+    TrainState.restate.coverage = coverage;
+    TrainState.restate.structure = null;
+    TrainState.restate.ownWords = null;
+    TrainState.restate.missedKeypoints = m.keypoints.filter(function(k,i){ return !TrainState.selfSaid[i]; });
+    TrainState.restate.goodPoint = "";
+    TrainState.restate.advice = coverage>=60 ? "要点をよく押さえています。次は論理の順序も意識して話してみましょう。" : "言えなかった要点を、もう一度本文の流れに沿って整理してみましょう。";
+    finishSession();
+  }
+
+  // ---- STEP 5: 結果 ----
+  function finishSession(){
+    var m = TrainState.material;
+    var quizAcc = TrainState.material.quiz.length ? TrainState.quizCorrect/TrainState.material.quiz.length : 0;
+    var measured = TrainState.measuredSec || (charLen(m.text)*0.16/TrainState.rate);
+    var effectiveCpm = measured>0 ? Math.round(charLen(m.text) / (measured/60)) : 0;
+    var comprehensibleCpm = Math.round(effectiveCpm * quizAcc);
+    var coverage = TrainState.restate.coverage!=null ? TrainState.restate.coverage : 0;
+
+    var change = decideLevelChange(quizAcc, coverage);
+
+    var evt = {
+      type:"session", id:uuid(), ts:Date.now(), dateLocal:localDateStr(),
+      materialId:m.id, materialTitle:m.title, source:m.source, category:m.category,
+      rate:Math.round(TrainState.rate*10)/10, replayed:TrainState.replayed,
+      measuredSec:Math.round(measured*10)/10, effectiveCpm:effectiveCpm,
+      quiz:{ n:m.quiz.length, correct:TrainState.quizCorrect },
+      restate:{
+        mode:TrainState.restate.mode,
+        coverage:TrainState.restate.coverage,
+        structure:TrainState.restate.structure,
+        ownWords:TrainState.restate.ownWords,
+        advice:TrainState.restate.advice,
+        goodPoint:TrainState.restate.goodPoint
+      },
+      comprehensibleCpm:comprehensibleCpm,
+      levelChange:change
+    };
+    appendEvent(evt);
+    renderResultStep(evt, quizAcc, coverage);
+  }
+  function renderResultStep(evt, quizAcc, coverage){
+    setWizardStep(4);
+    var change = evt.levelChange;
+    var bannerClass = change;
+    var bannerTitle = change==="up" ? "🎉 速度アップ！ "+fmtRate(SETTINGS.rate)+"x へ"
+                    : change==="down" ? "速度を調整： "+fmtRate(SETTINGS.rate)+"x へ"
+                    : "現在の速度を維持： "+fmtRate(SETTINGS.rate)+"x";
+    var reason = levelReason(change, quizAcc, coverage);
+    var qp = Math.round(quizAcc*100);
+    var html =
+      '<span class="cat-chip">STEP 5 ・ 結果</span>'+
+      '<div class="result-big">'+
+        '<div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.06em">今回の理解可能CPM</div>'+
+        '<div class="result-cpm">'+evt.comprehensibleCpm+'<small> 文字/分</small></div>'+
+      '</div>'+
+      '<div class="metric-row" style="margin-top:14px">'+
+        '<div class="metric"><div class="mv">'+fmtRate(evt.rate)+'x</div><div class="ml">速度</div></div>'+
+        '<div class="metric"><div class="mv">'+qp+'%</div><div class="ml">クイズ正答</div></div>'+
+        '<div class="metric"><div class="mv">'+coverage+'%</div><div class="ml">カバレッジ</div></div>'+
+      '</div>'+
+      '<div class="metric-row">'+
+        '<div class="metric"><div class="mv">'+evt.effectiveCpm+'</div><div class="ml">実効CPM</div></div>'+
+        '<div class="metric"><div class="mv">'+evt.measuredSec+'s</div><div class="ml">実測再生時間</div></div>'+
+        '<div class="metric"><div class="mv">'+computeStreak()+'</div><div class="ml">連続日数</div></div>'+
+      '</div>'+
+      '<div class="level-banner '+bannerClass+'">'+
+        '<div class="lb-big">'+bannerTitle+'</div>'+
+        '<div class="lb-sub">'+esc(reason)+'</div>'+
+      '</div>'+
+      '<button class="primary" data-act="wiz-done">ホームに戻る</button>';
+    $("wiz-body").innerHTML = html;
+  }
+
+  // ===================== エクスポート / インポート =====================
+  function exportData(){
+    var payload = {
+      app:"sokucho-trainer", version:APP_VERSION, exportedAt:new Date().toISOString(),
+      events: loadEvents(), settings: loadSettings()
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "sokucho_backup_"+localDateStr()+".json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+  function importData(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var data = JSON.parse(reader.result);
+        if(!data || !Array.isArray(data.events)) throw new Error("format");
+        confirmModal("インポートの確認", "既存のデータを上書きして "+data.events.length+" 件の記録を復元します。よろしいですか？", "復元する").then(function(ok){
+          if(!ok) return;
+          saveEvents(data.events);
+          if(data.settings){ SETTINGS = Object.assign(JSON.parse(JSON.stringify(DEFAULT_SETTINGS)), data.settings); SETTINGS.rate = clampRate(SETTINGS.rate); saveSettings(SETTINGS); }
+          alertModal("復元しました", "データを復元しました。").then(function(){ showScreen("home"); });
+        });
+      }catch(e){
+        alertModal("読み込めません", "有効なバックアップJSONではありません。");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ===================== イベントデリゲーション =====================
+  document.addEventListener("click", function(ev){
+    var t = ev.target.closest("[data-act], [data-nav], [data-quiz-choice], [data-hist], [data-mode], [data-self]");
+    if(!t) return;
+
+    if(t.hasAttribute("data-nav")){ showScreen(t.getAttribute("data-nav")); return; }
+    if(t.hasAttribute("data-quiz-choice")){ answerQuiz(parseInt(t.getAttribute("data-quiz-choice"),10)); return; }
+    if(t.hasAttribute("data-hist")){ showHistoryDetail(t.getAttribute("data-hist")); return; }
+    if(t.hasAttribute("data-mode")){ setRestateMode(t.getAttribute("data-mode")); return; }
+    if(t.hasAttribute("data-self")){ toggleSelfCheck(parseInt(t.getAttribute("data-self"),10), t.getAttribute("data-said")==="1"); return; }
+
+    var act = t.getAttribute("data-act");
+    switch(act){
+      case "start-training": startTraining(); break;
+      case "wiz-close":
+        confirmModal("訓練を中断しますか？", "この訓練の記録は保存されません。", "中断する", true).then(function(ok){ if(ok) closeWizard(); });
+        break;
+      case "play-listen": playListen(false); break;
+      case "replay-listen": replayListen(); break;
+      case "go-quiz": renderQuizStep(); break;
+      case "quiz-next": nextQuiz(); break;
+      case "rec-toggle": toggleRecording(); break;
+      case "restate-submit": submitRestate(); break;
+      case "finish-session": finishSession(); break;
+      case "selfcheck-submit": submitSelfCheck(); break;
+      case "wiz-done": closeWizard(); break;
+      case "voice-preview": previewVoice(); break;
+      case "speed-up": manualSpeed(RATE_STEP); break;
+      case "speed-down": manualSpeed(-RATE_STEP); break;
+      case "export": exportData(); break;
+      case "import": $("import-file").click(); break;
+      case "why": modal({ title:"なぜ効くのか", html:whyItWorksHtml(), buttons:[{label:"閉じる", value:true, kind:"cancel"}] }); break;
+      case "reset-all":
+        confirmModal("全データを削除", "すべての訓練記録と設定を削除します。この操作は取り消せません。", "削除する", true).then(function(ok){
+          if(!ok) return;
+          try{ localStorage.removeItem(K_EVENTS); localStorage.removeItem(K_SETTINGS); localStorage.removeItem(K_NEWS_CACHE); }catch(e){}
+          SETTINGS = loadSettings();
+          alertModal("削除しました", "全データを削除しました。").then(function(){ showScreen("home"); });
+        });
+        break;
+    }
+  });
+
+  document.addEventListener("change", function(ev){
+    var t = ev.target;
+    if(t.id==="voice-select"){ SETTINGS.voiceURI = t.value; saveSettings(SETTINGS); }
+    if(t.id==="course-select"){ SETTINGS.defaultCourse = t.value; saveSettings(SETTINGS); }
+    if(t.id==="import-file" && t.files && t.files[0]){ importData(t.files[0]); t.value=""; }
+  });
+
+  function previewVoice(){
+    TTS.speak("これは速聴トレーナーの読み上げの声です。自然に聞こえますか。", 1.0);
+  }
+  function manualSpeed(delta){
+    var nr = clampRate(SETTINGS.rate + delta);
+    if(nr === SETTINGS.rate) return;
+    SETTINGS.rate = nr;
+    // 手動変更は記録に残す
+    appendEvent({ type:"manual_speed", id:uuid(), ts:Date.now(), dateLocal:localDateStr(), rate:nr });
+    saveSettings(SETTINGS);
+    $("manual-speed").textContent = fmtRate(nr)+"x";
+  }
+
+  // ===================== 起動 =====================
+  function init(){
+    // voices事前ロード
+    TTS.loadVoices();
+    setTimeout(function(){ TTS.loadVoices(); }, 500);
+    showScreen("home");
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+
+  // inline onclickは使わないが、要件に従い主要関数をwindowへ公開
+  window.SokuchoApp = {
+    showScreen:showScreen, startTraining:startTraining,
+    localDateStr:localDateStr, loadEvents:loadEvents, loadSettings:loadSettings,
+    setRate:function(r){ SETTINGS.rate=clampRate(r); saveSettings(SETTINGS); renderHome(); }
+  };
+})();
+</script>
+</body>
+</html>
