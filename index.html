@@ -345,7 +345,7 @@
       <div class="status" id="home-status"><span class="dot"></span>今日の訓練：未完了</div>
       <div class="speedlabel">重要要素カバレッジ（直近）</div>
       <div class="speed" id="home-cc">—<span>%</span></div>
-      <div class="cpm" id="home-passline">合格ライン 85% ・ 直近0回中 0回 達成</div>
+      <div class="cpm" id="home-passline">合格ライン 85% ・ 直近0日中 0日 達成</div>
       <button class="startbtn" data-act="start-training">今日の訓練を開始</button>
     </div>
 
@@ -425,7 +425,7 @@
       <label class="switch-row"><input type="checkbox" id="interference-check"><span>遅延中に干渉タスク（暗算）を出す</span></label>
       <div class="axis-est" id="axis-est"></div>
       <p style="font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.6">
-        通常は自動調整（重要要素カバレッジ85%を直近5回中4回で1段アップ）に任せてください。手動変更は記録に残ります。
+        通常は自動調整（重要要素カバレッジ85%を直近5日中4日で1段アップ）に任せてください。手動変更は記録に残ります。
       </p>
     </div>
 
@@ -1374,7 +1374,7 @@ window.SOKUCHO_MATERIALS_DIALOG = [
   "use strict";
 
   // ===================== 定数 =====================
-  var APP_VERSION = "v2026.07.29a";
+  var APP_VERSION = "v2026.08.10b";
   var DATA_VERSION = 2;                        // 改善要望 §3 の移行判定に使う
   var API_ENDPOINT = "https://sokucho-proxy.tk-business126.workers.dev";
   var API_MODEL = "claude-sonnet-4-5";
@@ -1388,7 +1388,7 @@ window.SOKUCHO_MATERIALS_DIALOG = [
 
   var PASS_CC = 85;                            // R-05 合格ライン（coverageCritical）
   var DOWN_CC = 70;                            // R-04 降格ライン
-  var UP_WINDOW = 5, UP_HITS = 4, DOWN_STREAK = 2;
+  var UP_WINDOW = 5, UP_HITS = 4, DOWN_STREAK = 2;  // 単位は「日」（1日に何回訓練しても1日分）
 
   // R-01 難易度の多軸化。rate 以外の4軸を段階で持つ
   var AXES = {
@@ -1450,7 +1450,8 @@ window.SOKUCHO_MATERIALS_DIALOG = [
     voiceURI:"", voiceURI2:"",
     axes: null,                 // loadSettings で DEFAULT_AXES を複製
     interference:true,          // R-06 遅延中の干渉タスク
-    lastAdjustAt:0,             // R-04 昇降格の判定窓の起点（採点済みセッション数）
+    lastAdjustAt:0,             // 旧: 判定窓の起点（採点済みセッション数）。lastAdjustDate への移行にのみ使う
+    lastAdjustDate:null,        // R-04 昇降格の判定窓の起点（最後に負荷を変えた日 "YYYY-MM-DD"）
     dataVersion:DATA_VERSION
   };
   function loadSettings(){
@@ -1472,6 +1473,13 @@ window.SOKUCHO_MATERIALS_DIALOG = [
     out.axes = fixed;
     out.interference = !!out.interference;
     out.lastAdjustAt = out.lastAdjustAt|0;
+    // 昇降格の起点をセッション数から日付へ変更。旧データは該当セッションの日付に読み替える
+    if(typeof out.lastAdjustDate !== "string" && out.lastAdjustAt > 0){
+      var g0 = gradedSessions();
+      var e0 = g0[out.lastAdjustAt-1] || g0[g0.length-1];
+      out.lastAdjustDate = e0 ? e0.dateLocal : null;
+    }
+    if(typeof out.lastAdjustDate !== "string") out.lastAdjustDate = null;
     out.dataVersion = DATA_VERSION;
     return out;
   }
@@ -1960,9 +1968,12 @@ window.SOKUCHO_MATERIALS_DIALOG = [
   }
   function generateNews(){
     var today = localDateStr();
+    var doneCount = sessions().length;
     try{
+      // 同日でもセッションを1本終えたら次は新しいニュースを生成する（朝・夜など1日複数回の訓練用）。
+      // セッション数が変わっていない間だけ再利用＝訓練を中断して再開したときの無駄な再生成を防ぐ。
       var cache = JSON.parse(localStorage.getItem(K_NEWS_CACHE)||"null");
-      if(cache && cache.date===today && cache.material) return Promise.resolve(cache.material);
+      if(cache && cache.date===today && cache.sessionsAt===doneCount && cache.material) return Promise.resolve(cache.material);
     }catch(e){}
     function attempt(){
       return callClaude(genNewsPrompt(), 1600).then(function(txt){
@@ -1981,7 +1992,7 @@ window.SOKUCHO_MATERIALS_DIALOG = [
         }),
         quiz:o.quiz, notLatest:true, density:"high", speakers:1
       };
-      try{ localStorage.setItem(K_NEWS_CACHE, JSON.stringify({date:today, material:mat})); }catch(e){}
+      try{ localStorage.setItem(K_NEWS_CACHE, JSON.stringify({date:today, sessionsAt:doneCount, material:mat})); }catch(e){}
       return mat;
     });
   }
@@ -2014,10 +2025,34 @@ window.SOKUCHO_MATERIALS_DIALOG = [
   function gradedSessions(){
     return sessions().filter(function(e){ return e.restate && e.restate.coverageCritical!=null; });
   }
-  function isTodayDone(){
-    var t = localDateStr();
-    return sessions().some(function(e){ return e.dateLocal===t; });
+  // 昇降格は「日」単位で判定する。能力は睡眠をはさんで定着すると考えられるため、
+  // 同じ日に2回訓練しても1日分としてしか数えない。
+  // その日の代表値は「最初の採点済みセッション」＝睡眠明けの素の実力。2本目以降は履歴・統計には残るが
+  // 負荷判定には影響しない（2回目をやると不利になる、という動機を作らないため）。
+  // extraCc: まだ保存していない今回のスコア（今日がまだ未採点のときだけ今日の値として使う）
+  function gradedDays(extraCc){
+    var byDate = {}, order = [];
+    gradedSessions().forEach(function(e){
+      if(byDate[e.dateLocal]===undefined){ byDate[e.dateLocal] = e.restate.coverageCritical; order.push(e.dateLocal); }
+    });
+    if(extraCc!=null){
+      var t = localDateStr();
+      if(byDate[t]===undefined){ byDate[t] = extraCc; order.push(t); }
+    }
+    order.sort();
+    return order.map(function(d){ return { date:d, value:byDate[d] }; });
   }
+  // 最後に負荷を変えた日より後の訓練日数
+  function daysSinceAdjust(days){
+    var last = SETTINGS.lastAdjustDate;
+    if(!last) return days.length;
+    return days.filter(function(d){ return d.date > last; }).length;
+  }
+  function todayCount(){
+    var t = localDateStr();
+    return sessions().filter(function(e){ return e.dateLocal===t; }).length;
+  }
+  function isTodayDone(){ return todayCount() > 0; }
   function computeStreak(){
     var days = {};
     sessions().forEach(function(e){ days[e.dateLocal] = true; });
@@ -2032,8 +2067,8 @@ window.SOKUCHO_MATERIALS_DIALOG = [
     return g.length ? g[g.length-1].restate.coverageCritical : null;
   }
   function passHits(){
-    var g = gradedSessions().slice(-UP_WINDOW);
-    return { hits: g.filter(function(e){ return e.restate.coverageCritical>=PASS_CC; }).length, n: g.length };
+    var g = gradedDays().slice(-UP_WINDOW);
+    return { hits: g.filter(function(d){ return d.value>=PASS_CC; }).length, n: g.length };
   }
   function passRate(n){
     var s = sessions().filter(function(e){ return e.passed===true || e.passed===false; }).slice(-n);
@@ -2118,32 +2153,35 @@ window.SOKUCHO_MATERIALS_DIALOG = [
     SETTINGS.axes[name] = t;
     return { axis:name, label:AXES[name].label, from:AXES[name].fmt(f), to:AXES[name].fmt(t) };
   }
-  // 今回の coverageCritical を含めて判定する（保存前に呼ぶ）
+  // 今回の coverageCritical を含めて判定する（保存前に呼ぶ）。判定単位は「日」
   function decideProgress(cc){
-    var res = { change:"keep", detail:null, hits:0, window:0 };
-    var hist = gradedSessions().map(function(e){ return e.restate.coverageCritical; });
-    if(cc!=null) hist.push(cc);
-    var since = hist.length - (SETTINGS.lastAdjustAt||0);
-    var last5 = hist.slice(-UP_WINDOW);
-    res.hits = last5.filter(function(v){ return v>=PASS_CC; }).length;
+    var res = { change:"keep", detail:null, hits:0, window:0, today:null };
+    var today = localDateStr();
+    var days = gradedDays(cc);
+    var lastDay = days.length ? days[days.length-1] : null;
+    // 今日の代表値（今日の1本目のスコア）。2本目以降はこの値が変わらない＝1日1回しか判定が動かない
+    res.today = (lastDay && lastDay.date===today) ? lastDay.value : null;
+    var since = daysSinceAdjust(days);
+    var last5 = days.slice(-UP_WINDOW);
+    res.hits = last5.filter(function(d){ return d.value>=PASS_CC; }).length;
     res.window = last5.length;
-    var last2 = hist.slice(-DOWN_STREAK);
-    var isDown = last2.length>=DOWN_STREAK && last2.every(function(v){ return v<DOWN_CC; });
+    var last2 = days.slice(-DOWN_STREAK);
+    var isDown = last2.length>=DOWN_STREAK && last2.every(function(d){ return d.value<DOWN_CC; });
 
-    // 今回が未達のまま負荷を上げないよう、直近5回中4回に加えて「今回も合格」を条件にする
-    if(cc>=PASS_CC && last5.length>=UP_WINDOW && res.hits>=UP_HITS && since>=UP_WINDOW){
+    // 今日が未達のまま負荷を上げないよう、直近5日中4日に加えて「今日も合格」を条件にする
+    if(res.today!=null && res.today>=PASS_CC && last5.length>=UP_WINDOW && res.hits>=UP_HITS && since>=UP_WINDOW){
       var ups = upCandidates();
       if(ups.length){
         ups.sort(function(a,b){ return (a.lvl-b.lvl) || (a.pri-b.pri); });
         var d = applyAxis(ups[0].name, +1);
-        if(d){ res.change="up"; res.detail=d; SETTINGS.lastAdjustAt = hist.length; }
+        if(d){ res.change="up"; res.detail=d; SETTINGS.lastAdjustDate = today; }
       }
     } else if(isDown && since>=DOWN_STREAK){
       var downs = downCandidates();
       if(downs.length){
         downs.sort(function(a,b){ return (b.lvl-a.lvl) || (b.pri-a.pri); });
         var d2 = applyAxis(downs[0].name, -1);
-        if(d2){ res.change="down"; res.detail=d2; SETTINGS.lastAdjustAt = hist.length; }
+        if(d2){ res.change="down"; res.detail=d2; SETTINGS.lastAdjustDate = today; }
       }
     }
     saveSettings(SETTINGS);
@@ -2151,10 +2189,13 @@ window.SOKUCHO_MATERIALS_DIALOG = [
   }
   function progressReason(res, cc){
     if(cc==null) return "重要要素カバレッジが取得できなかったため、負荷は変更していません。";
-    if(res.change==="up") return "重要要素カバレッジ"+PASS_CC+"%以上を直近"+res.window+"回中"+res.hits+"回達成しました。いちばん伸ばしていない軸を1段上げます。";
-    if(res.change==="down") return "重要要素カバレッジが"+DOWN_CC+"%未満を2回連続したため、負荷をひとつ戻します。";
-    if(cc>=PASS_CC) return "合格です。直近"+res.window+"回中"+res.hits+"回が"+PASS_CC+"%以上。"+UP_WINDOW+"回中"+UP_HITS+"回で負荷が1段上がります。";
-    return "未達です。落とした要素の型を確認し、次は条件・数値・例外を拾うことを意識しましょう。";
+    if(res.change==="up") return "重要要素カバレッジ"+PASS_CC+"%以上を直近"+res.window+"日中"+res.hits+"日で達成しました。いちばん伸ばしていない軸を1段上げます。";
+    if(res.change==="down") return "重要要素カバレッジが"+DOWN_CC+"%未満の日が"+DOWN_STREAK+"日続いたため、負荷をひとつ戻します。";
+    // 同じ日の2本目以降は、その日の判定が1本目の値で確定済みであることを伝える
+    var extra = (res.today!=null && res.today!==cc)
+      ? "（負荷の判定は1日1回。今日は1本目の"+res.today+"%で判定済みです）" : "";
+    if(cc>=PASS_CC) return "合格です。直近"+res.window+"日中"+res.hits+"日が"+PASS_CC+"%以上。"+UP_WINDOW+"日中"+UP_HITS+"日で負荷が1段上がります。"+extra;
+    return "未達です。落とした要素の型を確認し、次は条件・数値・例外を拾うことを意識しましょう。"+extra;
   }
 
   // ===================== SVG チャート =====================
@@ -2274,17 +2315,18 @@ window.SOKUCHO_MATERIALS_DIALOG = [
     return out;
   }
   function renderHome(){
-    var done = isTodayDone();
+    var n = todayCount();
+    var done = n > 0;
     var st = $("home-status");
-    st.innerHTML = '<span class="dot'+(done?" done":"")+'"></span>今日の訓練：'+(done?"完了":"未完了");
+    st.innerHTML = '<span class="dot'+(done?" done":"")+'"></span>今日の訓練：'+(done ? n+"回完了" : "未完了");
     var cc = latestCC();
     $("home-cc").innerHTML = cc!=null ? cc+'<span>%</span>' : '—';
     var ph = passHits();
     $("home-passline").textContent = ph.n
-      ? "合格ライン "+PASS_CC+"% ・ 直近"+ph.n+"回中 "+ph.hits+"回 達成"
+      ? "合格ライン "+PASS_CC+"% ・ 直近"+ph.n+"日中 "+ph.hits+"日 達成"
       : "合格ライン "+PASS_CC+"% ・ まだ採点データがありません";
     var btn = document.querySelector('[data-act="start-training"]');
-    btn.textContent = done ? "もう一度訓練する" : "今日の訓練を開始";
+    btn.textContent = done ? "もう一度訓練する（本日"+(n+1)+"回目）" : "今日の訓練を開始";
     btn.classList.toggle("done", done);
 
     renderAxisGrid();
@@ -2461,7 +2503,9 @@ window.SOKUCHO_MATERIALS_DIALOG = [
       '<p>実務音声が難しい理由は速度ではなく、素材長・言い終えてから話すまでの遅延・数値と固有名詞の密度・話者の数です。本アプリはこの4軸で負荷を上げ、いちばん伸ばしていない軸から1段ずつ進めます。</p>'+
       '<h4>④ 落としてはいけない要素で測る</h4>'+
       '<p>要旨だけ拾って綺麗にまとめる要約は、議事録としては不良品です。条件・数値・固有名詞・例外の再現率（重要要素カバレッジ）を主指標とし、'+PASS_CC+'%未満はその日の未達としています。</p>'+
-      '<h4>⑤ 転移の確認</h4>'+
+      '<h4>⑤ 負荷の見直しは1日1回</h4>'+
+      '<p>知覚学習の定着には睡眠をはさんだ時間が必要です。同じ日に2回目を行えば当日の成績は上がりますが、それは定着ではなく直前の慣れです。そのため負荷の昇降格は日単位で判定し、その日の1本目の成績を使います（'+UP_WINDOW+'日中'+UP_HITS+'日で1段アップ）。1日に何回訓練しても、負荷が上がるのは最短で'+UP_WINDOW+'日に1段です。</p>'+
+      '<h4>⑥ 転移の確認</h4>'+
       '<p>訓練が実務に効いているかは、自分の会議音声での成績との差（転移ギャップ）でしか測れません。20pt以内を目安にしています。</p>'+
       '</div>';
   }
