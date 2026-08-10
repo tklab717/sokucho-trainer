@@ -5,6 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <title>速聴トレーナー — GROW Listen</title>
+<script>
+/* 本体より先に読み込む安全網。JSが途中で止まっても画面が無言で空になるのを防ぎ、
+   端末上で原因が読めるようにする（本体スクリプトの構文エラーもここで捕まる） */
+(function(){
+  function banner(msg){
+    try{
+      var d = document.getElementById("err-banner");
+      if(!d){
+        d = document.createElement("div");
+        d.id = "err-banner";
+        d.style.cssText = "position:fixed;left:10px;right:10px;bottom:74px;z-index:200;background:#b3261e;"+
+          "color:#fff;padding:12px 14px;border-radius:12px;font-size:12.5px;line-height:1.65;"+
+          "box-shadow:0 6px 20px rgba(20,30,50,.28);word-break:break-word;";
+        d.addEventListener("click", function(){ if(d.parentNode) d.parentNode.removeChild(d); });
+        (document.body || document.documentElement).appendChild(d);
+      }
+      d.textContent = "エラーが発生しました（タップで閉じる）／" + msg;
+    }catch(e){}
+  }
+  window.__reportError = banner;
+  window.addEventListener("error", function(ev){
+    banner((ev && ev.message ? ev.message : "不明なエラー") + (ev && ev.lineno ? "（" + ev.lineno + "行目）" : ""));
+  });
+  window.addEventListener("unhandledrejection", function(ev){
+    var r = ev && ev.reason;
+    banner("未処理の失敗: " + (r && r.message ? r.message : String(r)));
+  });
+})();
+</script>
 <style>
   :root{
     --ink:#1c2433; --red:#e25141; --blue:#3a6ea8; --amber:#c08a2d; --gold:#b9932f;
@@ -1374,7 +1403,7 @@ window.SOKUCHO_MATERIALS_DIALOG = [
   "use strict";
 
   // ===================== 定数 =====================
-  var APP_VERSION = "v2026.08.10b";
+  var APP_VERSION = "v2026.08.10c";
   var DATA_VERSION = 2;                        // 改善要望 §3 の移行判定に使う
   var API_ENDPOINT = "https://sokucho-proxy.tk-business126.workers.dev";
   var API_MODEL = "claude-sonnet-4-5";
@@ -1474,10 +1503,13 @@ window.SOKUCHO_MATERIALS_DIALOG = [
     out.interference = !!out.interference;
     out.lastAdjustAt = out.lastAdjustAt|0;
     // 昇降格の起点をセッション数から日付へ変更。旧データは該当セッションの日付に読み替える
+    // （起動時に走るため、どんな壊れた記録でもここでアプリを止めないようにする）
     if(typeof out.lastAdjustDate !== "string" && out.lastAdjustAt > 0){
-      var g0 = gradedSessions();
-      var e0 = g0[out.lastAdjustAt-1] || g0[g0.length-1];
-      out.lastAdjustDate = e0 ? e0.dateLocal : null;
+      try{
+        var g0 = gradedSessions();
+        var e0 = g0[out.lastAdjustAt-1] || g0[g0.length-1];
+        out.lastAdjustDate = (e0 && typeof e0.dateLocal==="string") ? e0.dateLocal : null;
+      }catch(e){ out.lastAdjustDate = null; }
     }
     if(typeof out.lastAdjustDate !== "string") out.lastAdjustDate = null;
     out.dataVersion = DATA_VERSION;
